@@ -10,11 +10,11 @@
 		                      symbol
 				      (evaluate value env))))
 
-# (print1 object)
+# (print object)
 # Print the textual representation of object to default output stream.
 # NOTE defined here because it's part of the repl and
 #      not doing so will break it.
-(:define print1 :print1)
+(:define print :print)
 
 # (quote 'object)
 # Return object without evaluating it.
@@ -629,17 +629,17 @@
                       (pair (pair k v) bucket)))
       h)))
 
-# TODO move up before msot array ops
+# TODO move up before most array ops
 # (hashmap:get h key)
 # (hashmap:get h key default)
 # Get value of a key in hashmap.
 # If key is not in hashmap, return default or nil.
 (define hashmap:get
-  (function (h k . rest)
-    (let ((index (modulo ((hashmap:hash-function h) k)
-                         (hashmap:capacity h)))
-          (bucket (array:get (hashmap::data h) index))
-          (entry (alist:find bucket k)))
+  (function (hashmap key . rest)
+    (let ((index (modulo ((hashmap:hash-function hashmap) key)
+                         (hashmap:capacity hashmap)))
+          (bucket (array:get (hashmap::data hashmap) index))
+          (entry (alist:find bucket key)))
       (if (pair? entry)
           (pair:tail entry)
           (if (pair? rest)
@@ -729,6 +729,20 @@
                       (hashmap:set! a k v)))
                   (hashmap::copy-structure hashmap)
                   hashmap)))
+
+(define hashmap:print
+  (function (hashmap)
+    (write "{")
+    (hashmap:fold (function (a (k . v))
+                    (when a
+                      (write " "))
+                    (print k)
+                    (write " ")
+                    (print v))
+                  false
+                  hashmap)
+    (write "}")
+    hashmap))
 
 # TODO print implementation
 

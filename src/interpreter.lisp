@@ -1,4 +1,4 @@
-(in-package :centi.interpreter)
+(in-package :centi)
 
 (defun destructure (ptree form callback)
   "Destructure FORM over PTREE. Whenever ptree is a symbol, do
@@ -6,8 +6,8 @@
   (cond ((null ptree)
          (when form
            (error "destructure: too many arguments")))
-        ((s:symbol? ptree)
-         (unless (eq (s:intern "nil") ptree)
+        ((symbol? ptree)
+         (unless (eq (intern "nil") ptree)
            (funcall callback ptree form)))
         ((consp ptree)
          (cond ((consp form)
@@ -21,10 +21,10 @@
          (error "destructure: unsupported ptree: ~a" ptree))))
 
 (defun eval (form env)
-  (cond ((s:symbol? form)
-         (let ((x (e:find env form)))
+  (cond ((symbol? form)
+         (let ((x (environment-find env form)))
            (if x
-               (e:get x form)
+               (environment-get x form)
                (error "eval: unbound variable: '~a'" form))))
         ((consp form)
          (destructuring-bind (f . args) form
@@ -38,23 +38,24 @@
         finally (return result)))
 
 (defun apply (form args env)
-  (cond ((c:special? form)
-         (with-slots (c:ptree c:body c:environment c:ebind) form
-           (if (functionp c:body)
-               (funcall c:body args env)
-               (let ((new-env (e:new c:environment)))
-                 (destructure c:ptree
+  (cond ((special? form)
+         (with-slots (ptree body environment ebind) form
+           (if (functionp body)
+               (funcall body args env)
+               (let ((new-env (environment environment)))
+                 (destructure ptree
                               args
-                              (lambda (k v) (e:set! new-env k v)))
-                 (unless (eq c:ebind (s:intern "nil"))
-                   (e:set! new-env c:ebind env))
-                 (eval-many c:body new-env)))))
-        ((c:function? form)
-         (apply (c:unwrap form)
+                              (lambda (k v)
+                                (environment-set! new-env k v)))
+                 (unless (eq ebind (intern "nil"))
+                   (environment-set! new-env ebind env))
+                 (eval-many body new-env)))))
+        ((function? form)
+         (apply (unwrap form)
                 (mapcar (lambda (form) (eval form env)) args)
                 env))
-        ((c:generic? form)
-         (apply (eval (s:intern "generic:call") env)
+        ((generic? form)
+         (apply (eval (intern "generic:call") env)
                 (cons form args)
                 env))
         (t

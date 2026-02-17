@@ -1,7 +1,5 @@
 # -*- mode: lisp -*-
 
-(define print1 :print1)
-
 # (loop bindings . body)
 # Same as (named-let recurse bindings . body).
 # Inspired by clojure's loop/recur.

@@ -1,34 +1,35 @@
-(in-package :centi.datatypes.environment)
+(in-package :centi)
 
-(defstruct (environment (:conc-name nil)
-                        (:predicate environment?))
+(defstruct (environment (:predicate environment?))
   parent
   bindings)
 
-(defun new (&optional (parent t present?))
-  (make-environment :parent (if present?
-                                parent
-                                (s:intern "nil"))
+(defmethod print-object ((object environment) stream)
+  (print-unreadable-object (object stream :identity t :type t)))
+
+(defun environment (&optional (parent t present?))
+  (make-environment :parent (if present? parent (intern "nil"))
                     :bindings (make-hash-table)))
 
-(defun get (e binding)
-  (gethash binding (bindings e)))
+(defun environment-get (e binding)
+  (gethash binding (environment-bindings e)))
 
-(defun set! (e binding value)
-  (setf (gethash binding (bindings e)) value)
+(defun environment-set! (e binding value)
+  (setf (gethash binding (environment-bindings e)) value)
   e)
 
-(defun contains? (e binding)
-  (multiple-value-bind (value present?) (get e binding)
+(defun environment-in? (e binding)
+  (multiple-value-bind (value present?)
+      (environment-get e binding)
     (declare (ignore value))
     present?))
 
-(defun empty? (e)
+(defun environment-empty? (e)
   "Check if environment is empty."
-  (eq e (s:intern "nil")))
+  (eq e (intern "nil")))
 
-(defun find (e binding)
-  (unless (empty? e)
-    (if (contains? e binding)
+(defun environment-find (e binding)
+  (unless (environment-empty? e)
+    (if (environment-in? e binding)
         e
-        (find (parent e) binding))))
+        (environment-find (environment-parent e) binding))))

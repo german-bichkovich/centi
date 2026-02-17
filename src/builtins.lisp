@@ -1,95 +1,73 @@
-(in-package :centi.builtins)
+(in-package :centi)
 
 ;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun bool->cbool (x)
   "Convert CL boolean to Centi boolean."
-  (if x (s:intern "true") (s:intern "false")))
+  (if x (intern "true") (intern "false")))
 
 (defun cbool->bool (x)
   "Convert Centi boolean to CL boolean."
-  (not (eq x (s:intern "false"))))
+  (not (eq x (intern "false"))))
 
 (defmacro define (name thing)
-  `(progn (e:set! *stdenv* (s:intern ,name) ,thing)
+  `(progn (environment-set! *stdenv* (intern ,name) ,thing)
           nil))
 
-(defmacro special (ptree ebind &rest body)
-  (if (and ptree (symbolp ptree))
-      `(c:make-special
-        :ebind 'env
-        :ptree ',ptree
-        :environment 'nil
-        :body (lambda (,ptree ,ebind)
-                (declare (ignorable ,ptree ,ebind))
-                ,@body))
-      (let ((form-symbol (gensym "FORM-")))
-        `(c:make-special
-          :ebind 'env
-          :ptree ',ptree
-          :environment 'nil
-          :body (lambda (,form-symbol ,ebind)
-                  (declare (ignorable ,form-symbol ,ebind))
-                  (destructuring-bind ,ptree ,form-symbol
-                    ,@body))))))
-
-(defmacro function (parameters &rest body)
-  `(c:wrap (special ,parameters |nil| . ,body)))
-
-(defparameter *stdenv* (e:new)
+(defparameter *stdenv* (environment)
   "Standard environment that includes all builtins.")
 
 ;;; Globals ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ;; Default truth value.
-;; (define "true" (s:intern "true"))
+;; (define "true" (intern "true"))
 ;;
 ;; ;; Canonical false value.
-;; (define "false" (s:intern "false"))
+;; (define "false" (intern "false"))
 ;;
 ;; ;; Lack of value.
-;; (define "nil" (s:intern "nil"))
+;; (define "nil" (intern "nil"))
 ;;
 ;; ;; Empty list.
-;; (define "()" (s:intern "()"))
+;; (define "()" (intern "()"))
 
 ;;; Bootstrap ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (evaluate form ?env)
 ;; Evaluate form in provided or current environment.
 (define "evaluate"
-  (c:wrap (special (form . rest) env
-            (i:eval form (if (consp rest)
-                             (car rest)
-                             env)))))
+  (wrap (special (form . rest) env
+          (eval form (if (consp rest)
+                         (car rest)
+                         env)))))
 
 ;; (if 'test 'then 'else)
 ;; If test is true, evaluate then form, otherwise evaluate else form.
 (define "if"
   (special (test then else) env
-    (if (cbool->bool (i:eval test env))
-        (i:eval then env)
-        (i:eval else env))))
+    (if (cbool->bool (eval test env))
+        (eval then env)
+        (eval else env))))
 
 ;; (symbol? object)
 ;; Check if object is a symbol.
 (define "symbol?"
   (function (object)
     (bool->cbool (or (eq object nil)
-                     (s:symbol? object)))))
+                     (symbol? object)))))
 
 ;; (symbol:name symbol)
 ;; Return a string representing a symbol name.
 (define "symbol:name"
   (function (symbol)
-    (s:name symbol)))
+    (symbol-name symbol)))
 
 ;; (symbol:intern name)
 ;; Intern a symbol with provided name.
 ;; Two different outputs of (intern "x") are always the same objects.
 (define "symbol:intern"
   (function (name)
-    (s:intern name)))
+    (intern name)))
 
 ;; (pair? object)
 ;; Check if object is a pair.
@@ -121,34 +99,34 @@
 ;; Check if object is a function.
 (define "function?"
   (function (object)
-    (bool->cbool (c:function? object))))
+    (bool->cbool (function? object))))
 
 ;; (special? object)
 ;; Check if object is a special form.
 (define "special?"
   (function (object)
-    (bool->cbool (c:special? object))))
+    (bool->cbool (special? object))))
 
 ;; (special 'ptree 'ebind . 'body)
 ;; Create a new special form.
 (define "special"
   (special (ptree ebind . body) env
-    (c:make-special :ebind ebind
-                    :ptree ptree
-                    :body body
-                    :environment env)))
+    (special-new :ebind ebind
+                 :ptree ptree
+                 :body body
+                 :environment env)))
 
 ;; (unwrap function)
 ;; Return a special form with same body as one function has.
 (define "unwrap"
   (function (object)
-    (c:unwrap object)))
+    (unwrap object)))
 
 ;; (wrap special)
 ;; Return a function with same body as provided special has.
 (define "wrap"
   (function (object)
-    (c:wrap object)))
+    (wrap object)))
 
 ;; (number? object)
 ;; Check if object is a number.
@@ -164,25 +142,25 @@
 ;; In second form, subtract each of numbers from number.
 (define "-"
   (function args
-    (apply #'- args)))
+    (cl:apply #'- args)))
 
 ;; (/ divident . divisors)
 ;; Divide divident by each of the divisors in a sequence.
 (define "/"
   (function args
-    (apply #'/ args)))
+    (cl:apply #'/ args)))
 
 ;; (modulo divident divisor)
 ;; Divide divident by divisor and return the remainder.
 (define "modulo"
   (function args
-    (apply #'mod args)))
+    (cl:apply #'mod args)))
 
 ;; (< . numbers)
 ;; Check that each of the numbers is strictly smaller than next one.
 (define "<"
   (function args
-    (bool->cbool (apply #'< args))))
+    (bool->cbool (cl:apply #'< args))))
 
 ;; (<< number n)
 ;; Bit shift number by n bits to the left.
@@ -216,7 +194,7 @@
     (make-array length
                 :initial-element (if default?
                                      default
-                                     (s:intern "nil"))
+                                     (intern "nil"))
                 :element-type t)))
 
 ;; (array:get array index)
@@ -284,78 +262,78 @@
 ;; Check if object is a record.
 (define "record?"
   (function (o)
-    (bool->cbool (r:record? o))))
+    (bool->cbool (record? o))))
 
 ;; (record type . slots)
 ;; Create a record with particular type, filling all of the slots.
 (define "record"
   (function args
-    (apply #'r:record args)))
+    (cl:apply #'record args)))
 
 ;; (record:type record)
 ;; Get type of a record
 (define "record:type"
   (function (r)
-    (r:get r 0)))
+    (record-type r)))
 
 ;; (record:length record)
 ;; Get length of a record.
 (define "record:length"
   (function (r)
-    (r:length (1- r))))
+    (record-length r)))
 
 ;; (record:get record index)
 ;; Get nth field of a record.
 ;; 0th field stores the type.
 (define "record:get"
   (function (r n)
-    (r:get r (+ n 1))))
+    (record-get r n)))
 
 ;; (record:set! record index value)
 ;; Set nth field of a record to value.
 (define "record:set!"
   (function (r n v)
-    (r:set! r (+ n 1) v)))
+    (record-set! r n v)))
 
 ;; (environment? object)
 ;; Create a new environment with specified parent environment.
 (define "environment?"
   (function (object)
-    (e:environment? object)))
+    (environment? object)))
 
 ;; (environment ?parent)
 ;; Create a new environment with specified parent environment.
 (define "environment"
   (function args
-    (e:new (if (consp args)
-               (car args)
-               (s:intern "nil")))))
+    (environment (if (consp args)
+                     (car args)
+                     (intern "nil")))))
 
 ;; (environment:set! environment symbol value)
 ;; Set value of a symbol in environment.
 (define "environment:set!"
   (function (env symbol value)
-    (e:set! env symbol value)))
+    (environment-set! env symbol value)))
 
 ;; (write-byte byte)
 ;; Write a byte to standard output.
 (define "write-byte"
   (function (byte)
     (format t "~a" (code-char byte))
-    (s:intern "nil")))
+    (intern "nil")))
 
 ;; (write string) => nil
 ;; Write string to standard output.
 (define "write"
   (function (string)
     (loop for c across string do (princ c))
-    (s:intern "nil")))
+    (intern "nil")))
 
-;; (:print1 object)
+;; (:print object)
 ;; A primitive printer. Extended with generics in-langauge.
-(define ":print1"
+(define ":print"
   (function (object)
-    (p:print1 object)))
+    (print object)))
 
 ;; (== . objects)
 ;; Check of each of the objects are same object.
@@ -417,7 +395,7 @@
 ;;   (function (fn args . rest)
 ;;     (i:apply (c:unwrap fn) args (if (consp rest)
 ;;                                     (car rest)
-;;                                     (s:intern "nil")))))
+;;                                     (intern "nil")))))
 ;;
 ;; ;; (do . 'forms)
 ;; ;; Evaluate forms in current environment, returning last result.
@@ -441,14 +419,14 @@
 ;;   (special (test . body) env
 ;;     (if (cbool->bool (i:eval test env))
 ;;         (i:eval-many body env)
-;;         (s:intern "nil"))))
+;;         (intern "nil"))))
 ;;
 ;; ;; (when-not test . body)
 ;; ;; (when-not true 1 2) <=> (if true nil (do 1 2))
 ;; (define "when-not"
 ;;   (special (test . body) env
 ;;     (if (cbool->bool (i:eval test env))
-;;         (s:intern "nil")
+;;         (intern "nil")
 ;;         (i:eval-many body env))))
 ;;
 ;; ;; (while 'test . 'body)
@@ -465,7 +443,7 @@
 ;; (define "dotimes"
 ;;   (special ((symbol value) . body) env
 ;;     (let ((inner (e:new env))
-;;           (result (s:intern "nil")))
+;;           (result (intern "nil")))
 ;;       (dotimes (n (i:eval value env) result)
 ;;         (e:set! inner symbol n)
 ;;         (setq result (i:eval-many body inner))))))
@@ -477,7 +455,7 @@
 ;;           for arg in args
 ;;           for x = (i:eval arg env)
 ;;           do (unless (cbool->bool x)
-;;                (return-from here (s:intern "false")))
+;;                (return-from here (intern "false")))
 ;;           finally (return-from here x))))
 ;;
 ;; ;; (or . 'args)
@@ -488,7 +466,7 @@
 ;;           for x = (i:eval arg env)
 ;;           do (when (cbool->bool x)
 ;;                (return-from here x))
-;;           finally (return-from here (s:intern "false")))))
+;;           finally (return-from here (intern "false")))))
 
 ;;; Pairs and lists ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -609,7 +587,7 @@
 ;;             (mapc (lambda (e)
 ;;                     (i:apply (c:unwrap f) (list e) env))
 ;;                   l)
-;;             (s:intern "nil"))))
+;;             (intern "nil"))))
 ;;
 ;; ;; (list:filter function list)
 ;; ;; (list:filter odd? '(1 2 3 4 5)) => (1 3 5)
@@ -627,7 +605,7 @@
 ;; ;; Create a new function.
 ;; (define "function"
 ;;   (special (ptree . body) env
-;;     (c:wrap (c:make-special :ebind (s:intern "nil")
+;;     (c:wrap (c:make-special :ebind (intern "nil")
 ;;                             :ptree ptree
 ;;                             :body body
 ;;                             :environment env))))
@@ -724,7 +702,7 @@
 ;;   (c:wrap (special (f a) env
 ;;             (loop for e across a
 ;;                   do (i:apply (c:unwrap f) (list e) env))
-;;             (s:intern "nil"))))
+;;             (intern "nil"))))
 ;;
 ;; ;; (array:map! function a) => a
 ;; (define "array:map!"
@@ -739,7 +717,7 @@
 ;; ;; (array:map function a)
 ;; (define "array:map"
 ;;   (c:wrap (special (f a) env
-;;             (i:eval (list (s:intern "array:map!")
+;;             (i:eval (list (intern "array:map!")
 ;;                           f
 ;;                           (copy-seq a))
 ;;                     env))))
@@ -787,7 +765,7 @@
 ;; (define "hashmap:get"
 ;;   (function (h key . rest)
 ;;     (h:get h key (if (null rest)
-;;                      (s:intern "nil")
+;;                      (intern "nil")
 ;;                      (car rest)))))
 ;;
 ;; ;; (hashmap? object)
@@ -849,7 +827,7 @@
 ;; (define "defun"
 ;;   (special (name . body) env
 ;;     (let ((value
-;;             (i:eval (cons (s:intern "function")
+;;             (i:eval (cons (intern "function")
 ;;                           body)
 ;;                     env)))
 ;;       (e:set! env name value)

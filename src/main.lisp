@@ -4,16 +4,16 @@
 
   (defun load (path)
     (with-open-file (s path)
-      (loop for form = (r:read :stream s :eof-marker eof)
-            until (member form (list eof (s:intern "nil")))
-            for value = (i:eval form b:*stdenv*))))
+      (loop for form = (read :stream s :eof-marker eof)
+            until (member form (list eof (intern "nil")))
+            for value = (eval form *stdenv*))))
 
   (defun repl ()
     (loop
-      for form = (r:read :stream nil
-                         :eof-marker eof)
-      until (member form (list eof (s:intern "nil")))
-      do (i:eval (list (s:intern "print1") form) b:*stdenv*)
+      for form = (read :stream nil
+                       :eof-marker eof)
+      until (member form (list eof (intern "nil")))
+      do (eval (list (intern "print") form) *stdenv*)
          (terpri))))
 
 (defun load-stdlib ()
