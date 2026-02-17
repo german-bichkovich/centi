@@ -1,0 +1,75 @@
+###
+### Partial evaluator
+###
+
+(print "peval")
+
+# (print (test a))
+# # =>
+# (print ((macro (x) (list quote x)) a))
+# # =>
+# (print ((special (x) env (eval (list quote x) env)) a))
+# # =>
+# (print (quote a))
+
+(define metadata
+    '((+
+       (special? . false)
+       (ptree . args))))
+
+(defun add2 (x)
+  (+ 1 x 1))
+# => (initial optimization)
+(defun add2 (x)
+  (+ 2 x))
+
+# Builtins have special partial evaluation rules
+# Go into the function bodies recursively
+# if pure and has no runtime dependancies, evaluate
+# if not, return the form
+# problems: fexprs, first class functions and side effects
+# ? if constant, inline
+# ? track if symbols are overridden?
+
+(defun peval (form)
+  (cond ((pair? form)
+         (let ((fn (head form))
+               (args (if true # TODO if normal fn
+                         (list-map peval (tail form))
+                         (tail form))))
+           (cond ((== fn '+)
+                  (peval/+ args 0 ()))
+                 (t
+                  (die "peval: idk")))))
+        (t form)))
+
+(defun peval/+ (args result unknowns)
+  (if (pair? args)
+      (let ((arg (head args)))
+        (cond ((number? arg)
+               (peval/+ (tail args)
+                        (+ result arg)
+                        unknowns))
+              ((pair? arg)
+               (let ((value (peval arg)))
+                 (if (number? value)
+                     (peval/+ (tail args)
+                              (+ result value)
+                              unknowns)
+                     (peval/+ (tail args)
+                              result
+                              (pair value unknowns)))))
+              ((symbol? arg)
+               (peval/+ (tail args)
+                        result
+                        (pair arg unknowns)))))
+      (pair '+ (pair result (list-reverse unknowns)))))
+
+(peval/+ '(1 x 1 y) 0 ())
+
+(defun test (x)
+  (+ (add2 5) x))
+# =>
+(defun test (x)
+  (+ 7 x))
+

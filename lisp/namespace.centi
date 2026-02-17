@@ -1,0 +1,105 @@
+# -*- mode: scheme -*-
+
+### Lua-style ########################################################
+#| Pros                          | Cons                             |#
+#| First-class                   | Export not where definition is   |#
+#| Simple                        | Need to import stuff             |#
+#| Same on file and local levels |                                  |#
+######################################################################
+
+(defun first ((head . nil)) head)
+(defun second ((nil second . nil)) second)
+(defun third ((nil nil third . nil)) third)
+(defun rest ((nil . rest)) rest)
+
+(defun list-map (f l)
+  (if (pair? l)
+      (pair (f (first l))
+            (list-map f (rest l)))
+      ()))
+
+(defun list-each (f l)
+  (if (pair? l)
+      (do (f (first l))
+          (list-each f (rest l)))
+      nil))
+
+(defun list-filter (f l)
+  (if (pair? l)
+      (if (f (first l))
+          (pair (first l) (list-filter f (rest l)))
+          (list-filter f (rest l)))
+      ()))
+
+(define plist-get
+  (let ((helper
+         (fn (list key default)
+             (if (pair? list)
+                 (cond ((== (first list) key)
+                        (first (rest list)))
+                       (true
+                        (helper (rest (rest list)) key default)))
+                 default))))
+    (fn (list key . default)
+      (helper list key (when (pair? default)
+                         (first default))))))
+
+(defun list-member? (list object)
+  (if (pair? list)
+      (if (== (first list) object)
+          list
+          (list-member? (rest list) object))
+      false))
+
+# (export . binds)
+# (export list?) => ((list? . #<function list?>))
+# (export (my-list? list?)) => ((my-list? . #<function list?>))
+(define export
+  (special binds env
+    (list-map (fn (spec)
+                (cond ((pair? spec)
+		       (pair (first spec) (eval (second spec) env)))
+                      ((symbol? spec)
+                       (pair spec (eval spec env)))
+                      (t
+                       (die "export: invalid spec"))))
+              binds)))
+
+# (import core.list)
+# (import core.list as l)
+# (import core.list include (nth head tail))
+# (import core.list exclude (nth head tail))
+# (import core.list as l include (nth head tail))
+# (import "list" as l exclude (nth head tail))
+(define import
+  (special (what . options) env
+    (let ((prefix
+           (plist-get options 'as))
+          (transform
+           (if (== prefix nil)
+               identity
+               (fn (name)
+                 (intern (string-append (symbol-name prefix)
+                                        "."
+                                        (symbol-name name))))))
+          (bindings
+           (if (string? what)
+               (load what)
+               (eval what env)))
+          (bindings
+           (let ((included (plist-get options 'include false))
+                 (excluded (plist-get options 'exclude false)))
+             (cond ((if included excluded false)
+                    (error "import: can't both include and exclude"))
+                   (included
+                    (list-filter (fn ((k . v))
+                                   (list-member? included k))
+                                 bindings))
+                   (excluded
+                    (list-filter (fn ((k . v))
+                                   (not (list-member? included k)))
+                                 bindings))
+                   (true bindings)))))
+      (list-each (fn ((name . value))
+                   (env-set! env (transform name) value))
+                 bindings))))

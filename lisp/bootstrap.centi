@@ -1,0 +1,755 @@
+# -*- mode: lisp -*-
+# Bootstrap sequence for centi.
+# All of required builtins are marked as such in builtins.lisp.
+
+# (:define symbol value)
+(environment:set! ((special () env env))
+                  ((special (x) nil x) :define)
+                  (special (symbol value) env
+		    (environment:set! env
+		                      symbol
+				      (evaluate value env))))
+
+# (print1 object)
+# Print the textual representation of object to default output stream.
+# NOTE defined here because it's part of the repl and
+#      not doing so will break it.
+(:define print1 :print1)
+
+# (quote 'object)
+# Return object without evaluating it.
+(:define quote
+  (special (x) nil x))
+
+# Default truth value.
+(:define true 'true)
+
+# The only false value.
+(:define false 'false)
+
+# Lack of value.
+(:define nil 'nil)
+
+# Empty list.
+# It is actually just a symbol, despite the visual representation.
+(:define () '())
+
+# (pair:head pair)
+# (pair:head '(a . b)) => a
+# Get value from head slot of a pair.
+(:define pair:head
+  (wrap (special ((head . nil)) nil head)))
+
+# (apply fn args)
+# (apply fn args env)
+# (apply pair '(a 2)) <=> (evaluate '(pair 'a '2) (environment))
+# (apply pair '(a 2) env) <=> (evaluate '(pair 'a '2) env)
+(:define apply
+  (wrap (special (f a . rest) nil
+          (evaluate (pair (unwrap f) a)
+                    (if (pair? rest)
+                        (pair:head rest)
+                        (environment))))))
+
+# (list:prepend arg . args)
+# (list:prepend 'x) <=> 'x
+# (list:prepend 'x 'y) <=> (pair 'x 'y)
+# (list:prepend 'x 'y 'z) <=> (pair 'x (pair 'y 'z))
+# Create a new list with elements before last prepended
+# to the last one.
+(:define list:prepend
+  (wrap (special (o . os) env
+          (if (pair? os)
+              (pair o (apply list:prepend os))
+              o))))
+
+# (list . args)
+# (list 'a (+ 1 2)) => (a 3)
+# Create a new list by evaluating all arguments.
+(:define list
+  (wrap (special args nil args)))
+
+# (function 'ptree . 'body)
+# (function (x) x) <=> (wrap (special (x) nil x))
+# Create a new function.
+(:define function
+  (special (ptree . body) env
+    (evaluate (list wrap
+                    (list:prepend special ptree nil body))
+              env)))
+
+# (pair:tail pair)
+# (pair:tail '(a . b)) => a
+# Get value from head slot of a pair.
+(:define pair:tail
+  (function ((nil . tail)) tail))
+
+# (list:fold function accumulator list)
+# (list:fold + 0 '(1 2 3)) <=> (+ (+ (+ 1 0) 2) 3)
+# TODO description.
+(:define list:fold
+  (function (f a l)
+    (if (pair? l)
+        (list:fold f (f a (pair:head l)) (pair:tail l))
+        a)))
+
+# (evaluate-many forms environment)
+# Evaluate list of forms in provided environment,
+# returning last result.
+(:define evaluate-many
+  (function (forms env)
+    (list:fold (function (nil f) (evaluate f env))
+               nil
+               forms)))
+
+# (ifs . forms)
+# (ifs (x 1 2) (true 0)) <=> (if x (do 1 2) (if true (do 0) nil))
+# If form with multiple tests.
+(:define ifs
+  (special forms env
+    (if (pair? forms)
+        ((function (((test . body) . forms))
+           (if (evaluate test env)
+               (evaluate-many body env)
+               (evaluate (pair ifs forms) env)))
+         forms)
+        nil)))
+
+# (do . 'forms)
+# Evaluate forms in current environment, returning last result.
+(:define do
+  (special forms env
+    (evaluate-many forms env)))
+
+# TODO die is not defined
+# (destructure ptree value callback)
+# Destructure FORM over PTREE. Whenever ptree is a symbol, do
+# (callback symbol form).
+(:define destructure
+  (function (ptree value callback)
+    (ifs ((symbol? ptree)
+          (ifs ((== ptree nil))
+               ((== ptree ())
+                (if (== value ())
+                    nil
+                    (die "destructure: too many arguments")))
+               (true
+                (callback ptree value)
+                nil)))
+         ((pair? ptree)
+          (if (pair? value)
+              (do (destructure (pair:head ptree)
+                               (pair:head value)
+                               callback)
+                  (destructure (pair:tail ptree)
+                               (pair:tail value)
+                               callback))
+              (die "destructure: value is not a pair")))
+         (true
+          (die "destructure: bad ptree")))))
+
+# (define 'ptree value)
+# Destructure value over the ptree and set each of
+# the symbols to corresponding values in current environment.
+(:define define
+  (special (ptree value) env
+    (:define value (evaluate value env))
+    (destructure ptree value (function (k v)
+                               (environment:set! env k v)))
+    value))
+
+# (let 'bindings . 'body)
+# bindings => ((ptree value) ...)
+(define let
+  (special (bindings . body) env
+    (evaluate-many
+     body
+     (list:fold (function (env (ptree form))
+                  (destructure ptree
+                               (evaluate form env)
+                               (function (k v)
+                                 (environment:set! env k v)))
+                  env)
+                (environment env)
+                bindings))))
+
+# (list:map function list)
+# (list:map pair:head '((1 . a) (2 . b))) => (1 2)
+(define list:map
+  (function (f l)
+    (if (pair? l)
+        (pair (f (pair:head l))
+              (list:map f (pair:tail l)))
+        ())))
+
+# (list:first list)
+# (list:first '(a b c)) => a
+# Get first element of a list.
+(define list:first pair:head)
+
+# (list:second list)
+# (list:second '(a b c)) => b
+# Get second element of a list.
+(define list:second
+  (function ((nil value . nil)) value))
+
+# (defun name . body)
+# (defun identity (x) x) <=> (define identity (function (x) x)).
+(define defun
+  (special (name . body) env
+    (let ((value (evaluate (pair function body) env)))
+      (environment:set! env name value)
+      value)))
+
+# (named-let name bindings . body)
+# Like let, but binds symbol name in its body
+# to a function, that takes as many arguments as there are
+# bindings, and when called, binds all positional arguments
+# and reruns the body. Inspired by scheme's named let form.
+(define named-let
+  (special (name bindings . body) env
+    (let ((ptree (list:map list:first bindings))
+          (values (list:map list:second bindings)))
+      (evaluate (list let
+                      (list (list name
+                                  (list:prepend 'function
+                                                ptree
+                                                body)))
+                      (pair name values))
+                env))))
+
+# (loop bindings . body)
+# Same as (named-let recurse bindings . body).
+# Inspired by clojure's loop/recur.
+(define loop
+  (special (bindings . body) env
+    (evaluate (list:prepend named-let 'recurse bindings body)
+              env)))
+
+######################################################################
+
+# (and . 'forms)
+# Evaluate forms in a sequence. If any of the arguments are
+# falsey, return false, otherwise continue evaluating
+# arguments and return last evaluated value.
+(define and
+  (special forms env
+    (loop ((forms forms)
+           (value true))
+      (if value
+          (if (pair? forms)
+              (recurse (pair:tail forms)
+                       (evaluate (pair:head forms) env))
+              value)
+          false))))
+
+# (or . 'forms)
+# Evaluate forms in a sequence, and if any of them are truthy,
+# return it's value, or default to false.
+(define or
+  (special forms env
+    (loop ((forms forms)
+           (value false))
+      (if value
+          value
+          (if (pair? forms)
+              (recurse (pair:tail forms)
+                       (evaluate (pair:head forms) env))
+              false)))))
+
+# (list:length list)
+# (list:length '(1 2 3)) => 3
+# Return a length of a list.
+(define list:length
+  (function (l)
+    (list:fold (function (n nil) (+ n 1)) 0 l)))
+
+# (when test . body)
+# (when true 1 2) <=> (if true (do 1 2) nil)
+(define when
+  (special (test . body) env
+    (if (evaluate test env)
+        (evaluate-many body env)
+        nil)))
+
+# (when-not test . body)
+# (when-not true 1 2) <=> (if true nil (do 1 2))
+(define when-not
+  (special (test . body) env
+    (if (evaluate test env)
+        nil
+        (evaluate-many body env))))
+
+# (while 'test . 'body)
+# Evaluate body until test returns false.
+(define while
+  (special (test . body) env
+    (loop ((value nil))
+      (if (evaluate test env)
+          (recurse (evaluate-many body env))
+          value))))
+
+# (list:fold-right function accumulator list)
+# (list:fold-right + 0 '(1 2 3)) <=> (+ 1 (+ 2 (+ 3 0)))
+# TODO description
+(define list:fold-right
+  (function (f a l)
+    (if (pair? l)
+        (f (list:fold-right f a (pair:tail l))
+	   (pair:head l))
+	a)))
+
+# (list:append . lists)
+# (list:append '(1 2) () '(3)) => (1 2 3)
+# Create a new list that is the result of concatenating
+# provided lists.
+(define list:append
+  (function ls
+    (list:fold (function (l1 l2)
+                 (list:fold-right (function (a e) (pair e a))
+                                  l2
+                                  l1))
+               ()
+               ls)))
+
+# (list:copy list)
+# (list:copy '(1 2)) => (1 2)
+# Return a shallow copy of a list.
+(define list:copy
+  (function (l)
+    (list:fold-right (function (a e) (pair e a)) () l)))
+
+# (list:reverse list)
+# (list:reverse '(1 2)) => (2 1)
+# Return a reversed copy of a list.
+(define list:reverse
+  (function (l)
+    (list:fold (function (a e) (pair e a)) () l)))
+
+# (list:each function list)
+# Apply function to each element of the list and
+# return the original list.
+(define list:each
+  (function (f l)
+    (list:fold (function (nil e) (f e)) nil l)
+    l))
+
+# (list:filter function list)
+# (list:filter odd? '(1 2 3 4 5)) => (1 3 5)
+(define list:filter
+  (function (f l)
+    (list:fold-right (function (a e)
+                       (if (f e) (pair e a) a))
+                     ()
+                     l)))
+
+# (list:nth list n)
+# (list:nth list n default)
+# (list:nth '(a b c) 2) => c
+# Get nth element of a list.
+(define list:nth
+  (function (list n . rest)
+    (loop ((list list)
+           (n n)
+           (default (if (pair? rest)
+                        (pair:head rest)
+                        nil)))
+      (if (pair? list)
+          (if (< n 1)
+              (pair:head list)
+              (recurse (pair:tail list) (- n 1) default))
+          default))))
+
+# (not x)
+# (not false) => true
+# (not 'anything-else) => false
+# If x is false, return true, otherwise return false.
+(define not
+  (function (x)
+    (== x false)))
+
+# TODO not implemented
+# # (list:map! function list)
+# # Mutate the list by applying f to each of its elements.
+# (define list:map!
+#   (function (f l)
+#     (if (pair? l)
+#         (pair (f (pair:head l))
+#               (list:map f (pair:tail l)))
+#         '())))
+
+# (dotimes ('bind 'count) . 'body)
+# Execute body number of times.
+# Bind is bound to the current iteration number, starting with 0.
+(define dotimes
+  (special ((bind count) . body) env
+    (let ((count (evaluate count env))
+          (env (environment env)))
+      (ifs ((not (number? count))
+            (die "dotimes: count is not a number."))
+           ((not (symbol? bind))
+            (die "dotimes: bind is not a symbol."))
+           (true
+            (loop ((n 0)
+                   (value nil))
+              (if (< n count)
+                  (recurse (+ n 1)
+                           (evaluate-many body
+                                          (environment:set! env
+                                                            bind
+                                                            n)))
+                  value)))))))
+
+# (+ . numbers)
+# (+ 1 2 3) => 6
+# Add all numbers together.
+(define +
+  (function ns
+    (list:fold (function (a e) (- e (- 0 a))) 0 ns)))
+
+# (* . numbers)
+# (* 1 2 3) => 6
+# Multiply all of the numbers together.
+(define *
+  (function ns
+    (define helper
+      (function (y x)
+        (if (== y 0)
+            0
+            (+ x (helper (- y 1) x)))))
+    (if (pair? ns)
+        (list:fold helper 1 ns)
+        1)))
+
+# (exponent base power)
+# (exponent 2 10) => 1024
+# Return the exponential of base and power. 
+(define exponent
+  (function (base power)
+    (define helper
+      (function (b p)
+        (if (< p 1)
+            1
+            (* b (helper b (- p 1))))))
+    (if (< power 0)
+        (/ 1 (helper base (- power)))
+        (helper base power))))
+
+# (modulus number)
+# (modulus 5) => 5
+# (modulus -5) => 5
+# Return absolute value of number.
+(define modulus
+  (function (number)
+    (if (< number 0)
+        (- 0 number)
+        number)))
+
+# (> number . numbers)
+# Check that each of the numbers is strictly greater than next one.
+(define >
+  (function (n . ns)
+    (if (pair? ns)
+        (if (< (pair:head ns) n)
+            (apply > ns)
+            false)
+        true)))
+
+# (>= number . numbers)
+# Check that each of the numbers is greater or equal to next one.
+(define >=
+  (function (n . ns)
+    (if (pair? ns)
+        (if (< n (pair:head ns))
+            false
+            (apply >= ns))
+        true)))
+
+# (<= number . numbers)
+# Check that each of the numbers is smaller or equal to next one.
+(define <=
+  (function (n . ns)
+    (if (pair? ns)
+        (if (> n (pair:head ns))
+            false
+            (apply <= ns))
+        true)))
+
+# (even? number)
+# Check if number is even (divisable by 2).
+# Return nil if argument is not a number.
+(define even?
+  (function (n)
+    (when (number? n)
+      (== (modulo n 2) 0))))
+
+# (odd? number)
+# Check if number is odd (not divisable by 2).
+# Return nil if argument is not a number.
+(define odd?
+  (function (n)
+    (when (number? n)
+      (== (modulo n 2) 1))))
+
+(define array
+  (function objects
+    (pair:tail
+     (list:fold (function ((n . array) e)
+                  (pair (+ n 1) (array:set! array n e)))
+                (pair 0 (array::new (list:length objects) nil))
+                objects))))
+
+(define array:copy
+  (function (array)
+    (let ((new-array (array::new (array:length array) nil)))
+      (dotimes (n (array:length array))
+        (array:set! new-array
+                    n
+                    (array:get array n))))))
+
+# (environment:here)
+# Return current environment.
+(define environment:here
+  (special () env env))
+
+# (array:map! function a)
+(define array:map!
+  (function (f a)
+    (let ((here (environment:here)))
+      (dotimes (n (array:length a))
+        (array:set! a n (f (array:get a n)))))))
+    
+# (array:map function a)
+(define array:map
+  (function (f a)
+    (array:map! f (array:copy a))))
+
+# (array:fold function accumulator array)
+# (array:fold + 0 [1 2 3]) <=> (+ (+ (+ 1 0) 2) 3)
+(define array:fold
+  (function (f a array)
+    (let ((here (environment:here)))
+      (dotimes (n (array:length array))
+        (environment:set! here
+                          'a
+                          (f a (array:get array n))))
+      a)))
+
+# (array:each function a) => nil
+# Call function for each element of an array.
+(define array:each
+  (function (f a)
+    (array:fold (function (nil e) (f e))
+                nil
+                a)
+    a))
+
+# (string:append . strings)
+# Return a new string that is a concatenation of all argument strings.
+(define string:append
+  (function ss
+   (list:fold (function (s1 s2)
+                (let ((l1 (string:length s1))
+                      (l2 (string:length s2))
+                      (new-string (string::new (+ l1 l2))))
+                  (dotimes (n l1)
+                    (string:set! new-string n (string:get s1 n)))
+                  (dotimes (n l2)
+                    (string:set! new-string
+                                 (+ n l1)
+                                 (string:get s2 n)))
+                  new-string))
+              ""
+              ss)))
+
+######################################################################
+
+(define alist:find
+  (function (alist key)
+    (if (pair? alist)
+        (let (((entry . alist) alist))
+          (if (== (pair:head entry) key)
+              entry
+              (alist:find alist key)))
+        nil)))
+
+# TODO bad
+(define hash
+  (function (object)
+    (ifs ((string? object) (string:length object))
+         ((symbol? object) (string:length (symbol:name object)))
+         (true             0))))
+
+# (hashmap::new capacity)
+# (hashmap::new capacity hash-function)
+(define hashmap::new
+  (function (capacity . rest)
+    (record 'hashmap
+            (array::new capacity ())
+            (if (pair? rest)
+                (pair:head rest)
+                hash))))
+
+# (hashmap? object)
+# Check if object is a hashmap.
+(define hashmap?
+  (function (object)
+    (and (record? object)
+         (== (record:type object) 'hashmap))))
+
+(define hashmap::data
+  (function (hashmap)
+    (record:get hashmap 0)))
+
+(define hashmap::data!
+  (function (hashmap value)
+    (record:set! hashmap 0 value)))
+
+(define hashmap:hash-function
+  (function (hashmap)
+    (record:get hashmap 1)))
+
+(define hashmap:capacity
+  (function (hashmap)
+    (array:length (hashmap::data hashmap))))
+
+# (hashmap:set! hashmap key value)
+# Set value of a key in hashmap.
+# Returns the original hashmap.
+(define hashmap:set!
+  (function (h k v)
+    (let ((index (modulo ((hashmap:hash-function h) k)
+                         (hashmap:capacity h)))
+          (bucket (array:get (hashmap::data h) index))
+          (entry (alist:find bucket k)))
+      (if (pair? entry)
+          (pair:tail! entry v)
+          (array:set! (hashmap::data h)
+                      index
+                      (pair (pair k v) bucket)))
+      h)))
+
+# TODO move up before msot array ops
+# (hashmap:get h key)
+# (hashmap:get h key default)
+# Get value of a key in hashmap.
+# If key is not in hashmap, return default or nil.
+(define hashmap:get
+  (function (h k . rest)
+    (let ((index (modulo ((hashmap:hash-function h) k)
+                         (hashmap:capacity h)))
+          (bucket (array:get (hashmap::data h) index))
+          (entry (alist:find bucket k)))
+      (if (pair? entry)
+          (pair:tail entry)
+          (if (pair? rest)
+              (pair:head rest)
+              nil)))))
+
+# (hashmap . args)
+# (hashmap 'a 5 'b 6) => {a 5 b 6}
+# {'a 5} <=> (hashmap 'a 5)
+# Create a hashmap out of args, with each odd
+# argument being the key, and each even - key's value.
+(define hashmap
+  (function args
+    (let ((length (list:length args)))
+      (if (odd? length)
+          (die "hashmap: key/value count mismatch")
+          (loop ((h (hashmap::new length))
+                 (args args))
+            (if (pair? args)
+                (let (((key value . rest) args))
+                  (recurse (hashmap:set! h key value) rest))
+                h))))))
+
+(define hashmap:new
+  (function (options)
+    (hashmap::new (hashmap:get options 'capacity 10)
+                  (hashmap:get options 'hash-function hash))))
+
+# (hashmap:in? hashmap key)
+# Check if key is present in hashmap.
+(define hashmap:in?
+  (function (h k)
+    (pair?
+     (alist:find (array:get (hashmap::data h)
+                            (modulo ((hashmap:hash-function h) k)
+                                    (hashmap:capacity h)))
+                 k))))
+
+# (hashmap:fold function accumulator list)
+# (hashmap:fold pair () {'a 5 'b 6}) <=>
+#   (pair (pair '(a . 5) ()) (b . 6))
+(define hashmap:fold
+  (function (f a hashmap)
+    (array:fold (function (a bucket)
+                  (list:fold f a bucket))
+                a
+                (hashmap::data hashmap))))
+
+(define hashmap::copy-structure
+  (function (hashmap)
+    (hashmap::new (hashmap:capacity hashmap)
+                  (hashmap:hash-function hashmap))))
+
+# (hashmap:copy hashmap)
+# (hashmap:copy {'a 5}) => {a 5}
+# Return a newly-allocated copy of a hashmap.
+(define hashmap:copy
+  (function (hashmap)
+    (hashmap:fold (function (a (k . v))
+                    (hashmap:set! a k v))
+                  (hashmap::copy-structure hashmap)
+                  hashmap)))
+
+# (hashmap:each function hashmap)
+# Apply function to each of hashmap's key/value pairs and return the
+# original hashmap.
+(define hashmap:each
+  (function (f h)
+    (hashmap:fold (function (nil kv) (f kv))
+                  nil
+                  h)
+    h))
+
+# (hashmap:map! function hashmap)
+# Mutate the hashmap by applying f to each of its key/value pairs.
+# TODO
+(define hashmap:map!
+  (function (f h)))
+
+# (hashmap:map function hashmap)
+# Create a new hashmap in which each key/value pair is the result of
+# applying function to the key/value pair of hashmap.
+(define hashmap:map
+  (function (f hashmap)
+    (hashmap:fold (function (a kv)
+                    (let (((k . v) (f kv)))
+                      (hashmap:set! a k v)))
+                  (hashmap::copy-structure hashmap)
+                  hashmap)))
+
+# TODO print implementation
+
+######################################################################
+
+# (identity x) => x
+# Return argument as is.
+(define identity (wrap quote))
+
+# (list:third list)
+# (list:third '(a b c)) => b
+# Get third element of a list.
+(define list:third
+  (function ((nil nil value . nil)) value))
+
+(define array:new
+  (function (options)
+    (array::new (hashmap:get options 'length 0)
+                (hashmap:get options 'default nil))))
+
+(define string:new
+  (function (options)
+    (string::new (hashmap:get options 'length 0)
+                 (hashmap:get options 'default 0))))

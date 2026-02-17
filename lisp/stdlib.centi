@@ -1,0 +1,150 @@
+# -*- mode: lisp -*-
+
+(define print1 :print1)
+
+# (loop bindings . body)
+# Same as (named-let recurse bindings . body).
+# Inspired by clojure's loop/recur.
+(define loop
+  (special (bindings . body) env
+    (evaluate (list:prepend named-let 'recurse bindings body)
+              env)))
+
+### Vectors ##########################################################
+
+(define vector array)
+
+### Hashmaps #########################################################
+
+# (each function hashmap)
+(define h:each
+  (function (f h)
+    (list:each f (r:get h 1))))
+
+# (map! function hashmap)
+(define h:map!
+  (function (f h)
+    (list:map! f (r:get h 1))
+    h))
+
+# (map function hashmap)
+(define h:map
+  (function (f h)
+    (record 'hashmap (list:map f (r:get h 1)))))
+
+### Namespaces #######################################################
+
+# (export . binds)
+# (export list?) => ((list? . #<function list?>))
+# (export (my-list? list?)) => ((my-list? . #<function list?>))
+(define export
+  (special binds env
+    (list:map (function (spec)
+             (if* ((pair? spec)
+                   (pair (list:first spec) (evaluate (list:second spec) env)))
+                  ((symbol? spec)
+                   (pair spec (evaluate spec env)))
+                  (t
+                   (die "export: invalid spec"))))
+           binds)))
+
+# (import core.list)
+# (import core.list as l)
+# (import core.list include (nth head tail))
+# (import core.list exclude (nth head tail))
+# (import core.list as l include (nth head tail))
+# (import "list" as l exclude (nth head tail))
+(define import
+  (special (what . options) env
+    (let ((prefix
+           (p:get options 'as))
+          (transform
+           (if (== prefix nil)
+               identity
+               (function (name)
+                 (symbol:intern (string-append (symbol:name prefix)
+                                               "."
+                                               (symbol:name name))))))
+          (bindings
+           (if (string? what)
+               (load what)
+               (evaluate what env)))
+          (bindings
+           (let ((included (p:get options 'include false))
+                 (excluded (p:get options 'exclude false)))
+             (if* ((if included excluded false)
+                   (error "import: can't both include and exclude"))
+                  (included
+                   (list:filter (function ((k . v))
+                               (list:member? included k))
+                             bindings))
+                  (excluded
+                   (list:filter (function ((k . v))
+                               (not (list-member? included k)))
+                             bindings))
+                  (true bindings)))))
+      (list:each (function ((name . value))
+      (environment:set! env (transform name) value))
+              bindings))))
+
+### Pattern matching #################################################
+
+(defun match::matches? (ptree form)
+  (if* ((== ptree ())   (== form ()))
+       ((symbol? ptree) true)
+       ((pair? ptree)   (if (pair? form)
+                            (if (match::matches? (list:head ptree)
+                                                 (list:head form))
+                                (match::matches? (list:tail ptree)
+                                                 (list:tail form))
+                                false)
+                             false))
+       (true            false)))
+
+(define match
+  (special (form . clauses) env
+    (defun helper (((pattern . body) . clauses) value)
+      (if (match::matches? pattern value)
+          (evaluate (list:prepend let
+                           (list:list (list:list pattern
+                                           (list:list quote value)))
+                           body)
+                env)
+          (if (pair? clauses)
+              (helper clauses value)
+              nil)))
+    (helper clauses (evaluate form env))))
+
+(define match-fn
+  (special clauses env
+    (define body
+      (list:prepend match 'args
+                 (list:append clauses
+                           '((_ (die "match-fn: invalid arity"))))))
+    (evaluate (list:list function 'args body) env)))
+
+### Rest #############################################################
+
+# (= object . objects)
+# Check objects' structural equality.
+(defun = (o . os)
+  (defun equal? (o1 o2)
+    (if* ((== o1 o2) true)
+         ((pair? o1)
+          (if (pair? o2)
+              (if (equal? (list:head o1) (list:head o2))
+                  (equal? (list:tail o1) (list:tail o2))
+                  false)
+              false))
+         (true false))) # TODO call generic = function
+  (list:fold equal? o os))
+
+# (compose . functions)
+# (compose print -) <=> (function (x) (print (- x)))
+# TODO import list lib
+(define compose
+  (function fs
+    (function (x)
+      (list:fold-right (function (acc elt) (elt acc))
+                       x
+                       fs))))

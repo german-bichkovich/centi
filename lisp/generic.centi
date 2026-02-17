@@ -1,0 +1,145 @@
+# An implementation of generic functions.
+# Inspired by clojure's defmulti, but instead of ad-hoc hierarchies
+# uses class-oriented functions in signiture function.
+
+(define generic:generic
+  (function (f)
+    (r:record 'generic f {})))
+
+(define generic generic:generic)
+
+(define generic:signiture-function
+  (function (g)
+    (r:get g 1)))
+
+(define generic::method-table
+  (function (g)
+    (r:get g 2)))
+
+(define generic:method!
+  (function (g signiture f)
+    (h:set! (generic::method-table g) signiture f)
+    g))
+
+# Get a method corresponding to a particular signiture.
+(define generic:method
+  (function (g signiture)
+    (h:get (generic::method-table g) signiture)))
+
+# Find an applicable method for generic given particular arguments.
+(define generic:find
+  (function (g args)
+    (loop ((ss (apply (generic:signiture-function g) args)))
+      (when (pair? ss)
+        (let (((s . ss) ss))
+	  (if (nil? (h:find (generic::method-table g) s))
+	      (recur ss)
+	      (h:get (generic::method-table g) s)))))))
+
+# Apply a generic onto arguments.
+(define generic:apply
+  (function (g args)
+    (apply (generic:find g args) args)))
+
+# Call a generic with provided arguments.
+(define generic:call
+  (function (g . args)
+    (generic:apply g args)))
+
+### Example ##########################################################
+
+(define type
+  (function (x)
+    (if* ((pair? x) 'pair)
+         ((symbol? x) 'symbol)
+         ((number? x) 'number)
+         ((function? x) 'function)
+         ((special? x) 'special)
+         ((array? x) 'array)
+         ((record? x) (r:get x 0))
+         (true 'unknown))))
+
+# TODO classes
+(define ancestor-list
+  (function (x)
+    (l:list (type x) 'object)))
+
+### Printer ##########################################################
+
+(define print
+  (function (object)
+    (print1 object)
+    (io-write "\n")
+    object))
+
+# NOTE you need default method on the generic to not break repl.
+(do (define print1
+      (generic (function (object)
+        (ancestor-list object))))
+    (generic:method! print1 'object :print1))
+
+(generic:method! print1 'hashmap
+  (function (h)
+    (io-write "{")
+    (let ((here (e:current))
+          (first? true))
+      (l:each (function ((k . v))
+                (if first?
+                    (e:set! here 'first? false)
+                    (io-write " "))
+                (print1 k)
+                (io-write " ")
+                (print1 v))
+              (r:get h 1)))
+    (io-write "}")
+    h))
+
+### Setter ###########################################################
+
+(define set!
+  (generic (function (object where value)
+             (ancestor-list object))))
+
+(generic:method! set! 'array a:set!)
+
+(generic:method! set! 'hashmap h:set!)
+
+(generic:method! set!
+                 'pair
+                 (function (pair spec value)
+		   (if* ((== spec 'head)
+		         (l:head! pair value))
+		        ((== spec 'tail)
+			 (l:tail! pair value))
+			(true
+			  (die "set!: invalid spec")))))
+
+### Getter ###########################################################
+
+(define get
+  (generic (function (object where . rest)
+             (if (pair? rest)
+                 (ancestor-list object)
+                 '(arity-2)))))
+
+(generic:method! get 'arity-2 (function (object where)
+                                (get object where nil)))
+
+(generic:method! get
+                 'array
+                 (function (array index default)
+                   (if (< -1 index (a:length array))
+                       (a:get array index)
+                       default)))
+
+(generic:method! get 'hashmap h:get)
+
+(generic:method! get
+                 'pair
+                 (function (pair spec nil)
+                   (if* ((== spec 'head)
+                         (l:head pair))
+                        ((== spec 'tail)
+                         (l:tail pair))
+                        (true
+                         (die "get!: invalid spec")))))

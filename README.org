@@ -1,0 +1,318 @@
+* Introduction
+
+Centilisp, or just Centi, is a lisp dialect heavily inspired by
+Kernel, Picolisp, Scheme and Common Lisp.
+
+* Usage
+* Conventions
+** Top-level symbols
+
+It's highly encouraged to name your forms without using
+non-standard abbriviations (or any whenever feasable).
+
+If concept is made up from many words, use kebab-case:
+- when-not
+- evaluate-many
+
+** Private variables
+
+Sometimes, variables are defined on top level but are not needed
+outside of the module and are just an implementation detail.
+For those cases, symbols are prefixed with ':'.
+
+For example:
+- :print1
+- :fn-helper
+- :table
+
+** Namespaces
+
+It's prefferable to import symbols from other namespaces
+using a prefix over including the symbol directly, because
+it's easier to track where the symbol is from. ':' is the
+default separator between namespace name and symbol name.
+
+For example:
+- hashmap:get
+- array:nth
+- list:fold
+- core.collections.list:fold # nested namespace
+- array::new # private variable in a namespace
+
+** Predicates
+
+All predicate function names should end with "?".
+
+For example: number? function? pair?
+
+Technically, any function that returns false or anything
+else may be a predicate, but it tends to confuse more than help.
+
+* Implementation details
+** Design decisions
+*** Why fexprs?
+
+I've been heavily inspired by Picolisp and Kernel to take that
+step.
+
+Fexprs, combined with first class environments, are an extremely
+simple system that allows you to have hygienic macro-like
+behaviours, at the same time allowing you to have them be first
+class, replacing both macros and special forms.
+
+Depending on how you write your code, fexprs can be either
+hygienic or not (which you may want in some situations, like
+anaphoric functions).
+
+Practically speaking, you could do most of what you can do with
+fexprs using macros and special forms, so they're more of an
+elegant gimmick than something extremely useful on their own.
+
+Biggest problem is efficiently compiling fexprs. This is a TBD
+issue, but I plan to tackle it using a partial evaluator.
+
+*** Why lists for AST?
+
+Although you can, and sometimes probably should, represent AST
+with vectors, arrays or other sequences, there are a few reasons
+I've decided to use pair-based lists for Centi's AST instead:
+
+- You can share structure between many lists.
+  It's especially important for Centi, as fexprs are processed
+  at runtime, so you want to avoid unnecessary copying whenever
+  doing any metaprogramming.
+
+- Linked lists are easy to work with.
+  Interface is simple - there's only head and tail.
+
+- Pairs are extremely simple, yet dynamic.
+  There's only 2 pointers in pairs. Arrays, being about as
+  simple as pairs, are way harder to work with because of their
+  static nature.
+  To prevent the case when an improper list getting created
+  breaks simplicity, Centi opts in for considering any non-pair
+  at last tail of a pair to be terminating element, not only ().
+
+- Nicer recursive interfaces.
+  Recursion with arrays is often either ugly (e.g. passing index
+  recursively), inefficient (e.g. creating subsequence each
+  time, supporting slice type) or complex (e.g. clojure's
+  sequences).
+
+- Pairs fight fragmentation better than arrays - you'll be able
+  to allocate them all over the heap in very small chunks.
+
+But there are drawbacks in using linked lists as well:
+
+- Bigger standard library. You need to support linked lists
+  separately from vectors. You also need to think more about
+  whether or not list makes more sense to use in the context
+  than an array.
+
+- Cache misses. This doesn't matter as much in a compiled
+  language because lists are not used at runtime, they're used
+  to represent compile-time ASTs. In Centi, it likely does
+  impact the performance, but all the other upsides make up for
+  it.
+
+- No identity. You can insert elements into a vector, but doing
+  so with pairs only works if list has at least 1 pair in it -
+  prepending to a list makes a new list, doesn't mutate one.
+  This is more than okay when doing functional programming, but
+  can be annoying for anything imperative.
+
+*** Single array type vs separate array types?
+
+|-------------+---------------------------------------------------------+---------------------|
+|             | Pros                                                    | Cons                |
+| Many types  | Simple                                                  | A lot of duplicates |
+|             | Less ambiguity (array:append "123" [4 5 6])             |                     |
+|             | Mostly implementable in-language                        |                     |
+|             | It's simple to use most optimal implementation directly |                     |
+|-------------+---------------------------------------------------------+---------------------|
+| Single type | Little duplicate code                                   | Complexity          |
+|             | Simpler to check if object is an array-like             |                     |
+|-------------+---------------------------------------------------------+---------------------|
+
+Notes:
+- Whatever the choice is, you're still better-off implementing
+  generics for array functions in the end.
+ 
+** Types
+*** Symbols
+
+Symbols are mostly used for variables.
+
+When read in source code, symbols are unique - symbol x will
+always refer to itself when encountered by the reader. This
+makes symbols usable as human-readable constants, for example
+you can represent a list of compass directions with
+'(north west south east).
+
+When evaluating, symbols get their value looked up lexically,
+starting from current environment and checking each parent until
+either reaching a value or end of the chain.
+
+*** Pairs
+
+A pair is a structure that stores 2 arbitrary objects and
+can be chained together to produce various kinds of trees,
+including linked lists.
+
+Their main purpose is representing the abstract syntax tree
+(AST) of a program, although they may be used for storing any
+data, if desired.
+
+By convention, linked list terminates by any non-pair object,
+not necessarily an empty list.
+
+When evaluating, head of a list gets evaluated to a callable
+that is going to be excuted, and tail of the list has the
+arguments.
+
+*** Callables
+
+Callables is a name for referring to `functions` and `specials`.
+
+Functions are first-class objects that show a parametrizable
+comutation.
+
+Specials are first-class special forms. They replace both
+special forms and macros in other lisps. Functionally, they're
+not much different from functions, except that they do not
+evaluate their arguments.
+
+Both callable types are implemented using a structure of 4
+fields: ptree, body, env and ebind.
+
+Ptree, aka parameter ptree, is an object that describes how to
+destructure arguments that callable receives.
+Destructuring works with arbitrary depth, unlike how it's done
+in scheme. Here are some examples:
+
+#+begin_src lisp
+  ;; ptree: symbol | nil | (ptree . ptree)
+  ((function x x) 1 2 3) => (1 2 3) # aka. list
+  ((function (x) x) 1) => 1 # aka. identity
+  ((function (x y . z) (list x y z)) 1 2 3 4 5) => (1 2 (3 4 5))
+  ((function ((x . nil)) x) '(1 2)) => 1 # aka. head
+#+end_src
+
+Env is a stored parent environment, in which function was
+created. It is used alongside ptree and ebind to construct a new
+environment in which body will be evaluated.
+
+Ebind is a symbol to which to bind dynamic environment when
+special is getting called. If it's nil, then there won't be any
+extra bindings - it is the default when creating functions with
+`function` builtin, but you can override the behaviour by using
+`(wrap (special ...))`.
+As an example, (special () e (env 'quote e)) is equivalent to
+`quote` - it binds calling environment to variable e, thus
+making is possible to evaluate other forms as if instead of the
+call to special.
+
+Body is a list of forms that store the body of a function. It
+gets evaluated in an environment that has stored environment as
+it's parent, and ptree + ebind bindings, destructured on
+arguments and calling environment respectively, as environment's
+bindings.
+
+*** Integers
+
+Because type tagging is used, integers represent signed 61-bit
+numbers.
+
+*** Floats
+
+Floats, aka. floating-point numbers, represent decimal numbers,
+like 1.2 or 3.99.
+
+*** Arrays
+
+Because there are a few of subtypes of arrays, first cell
+of an array is used for storing the length of it, with lower
+3 bits used for checking subtype of an array.
+
+**** General arrays
+**** Byte arrays
+**** Character arrays
+*** Records
+
+Record is also considered to be a subtype of an array, because
+Centi doesn't support packing, making a struct no different from
+an array.
+
+** Garbage collection
+
+Centi uses bit tagging to store type information at runtime.
+Memory is aligned to 64 bits, giving 3 bits for tagging.
+Below is a table describing main tagging scheme.
+
+|-----+----------+--------------------------------------------|
+| tag | type     | reasoning                                  |
+| 000 | integer  | Allows + and - to be done without shifting |
+| 001 | float    | You can check for a number with (< tag 2)  |
+| 010 | pair     |                                            |
+| 011 | symbol   |                                            |
+| 100 | function |                                            |
+| 101 | special  |                                            |
+| 110 | -        |                                            |
+| 111 | other    |                                            |
+|-----+----------+--------------------------------------------|
+
+If object is of type other, then the exact same bit tagging
+applies to the first word of heap space:
+
+|-----+---------------+-----------|
+| tag | type          | reasoning |
+| 000 | general-array |           |
+| 001 | byte-array    |           |
+| 010 | bit-array     |           |
+| 011 | string        |           |
+| 100 | -             |           |
+| 101 | -             |           |
+| 110 | -             |           |
+| 111 | record        |           |
+|-----+---------------+-----------|
+
+* TODO
+
+- Header package with things i need often
+  (defpackage header
+    (:use :cl)
+    (:export . names))
+    +
+  (defun package:symbol) ...
+- helpers to generate implementations for all array types?
+- generic functions and oop
+- optional immutability mechanisms?
+  good idea for stdenv after initial setup is completed
+- make all top level forms be evaluated at compile time, but main at runtime
+- generic vectors (use any array for storage)
+- implement byte-arrays and bit-arrays based on string records
+- re-implement every type, with custom print functions?
+  figure out overriding print function?
+- make destructure & apply generic functions, allow open extension
+- janet-like images
+- janet-like module system?
+- read up on checking if function is pure or not
+- check extensible effects
+- write a partial evaluator
+- find a good hash function
+
+#+begin_src elisp
+  (progn
+    (require 'sly)
+    (sly-start :program inferior-lisp-program
+               :init-function
+               (lambda ()
+                 (sly-eval-async
+                     '(cl:progn
+                       (cl:dolist (p '("/home/geri/centi-999/"
+                                       "/data/data/com.termux/files/home/centi-999/"))
+                                  (cl:pushnew (cl:pathname p) asdf:*central-registry* :test 'cl:equalp))
+                       (asdf:load-system :centi))
+                   #'identity
+                   :cl-user))))
+#+end_src

@@ -1,0 +1,45 @@
+# TODO short circuiting for take, drop, etc.
+# TODO interface for reducers
+
+(defun list-transduce (transformer reducer accumulator list)
+  (list-fold (transformer reducer) accumulator list))
+
+(defun map (f)
+  (fn (reducer)
+    (fn (accumulator element)
+      (reducer accumulator (f element)))))
+
+(defun filter (f)
+  (fn (reducer)
+    (fn (accumulator element)
+      (if (f element)
+          (reducer accumulator element)
+          accumulator))))
+
+# (define to-list
+#   (fn* (() ())
+#        ((a) (list-reverse a))
+#        ((a e) (pair e a))))
+# 
+# (define to-list
+#   (fn* (() ()))
+#        ((a) (list-reverse a))
+#        ((a e) (pair e a)))
+# 
+# (define to-list
+#   (list (fn () ())
+#         (fn (a) (list-reverse a))
+#         (fn (a e) (pair e a))))
+# 
+# (defun to-list args
+#   (case (length args)
+#     (0    ())
+#     (1    (reverse (first args)))
+#     (2    (pair (first args) (second args)))
+#     (else (error "to-list: invalid arity"))))
+#
+# (list-transduce (compose (map (fn (x) (* x 2)))
+#                          (map (fn (x) (pair x x))))
+#                 (fn (a e) (pair e a))
+#                 ()
+#                 '(1 2 3 4 5))
