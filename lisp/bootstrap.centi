@@ -664,3 +664,23 @@
   (function (options)
     (string::new (hashmap:get options 'length 0)
                  (hashmap:get options 'default 0))))
+
+# (minimum 3 6 9) => 3
+(define minimum
+  (function (number . numbers)
+    (list:fold (function (last current)
+                 (if (> last current)
+                     current
+                     last))
+               number
+               numbers)))
+
+# (maximum 3 6 9) => 9
+(define maximum
+  (function (number . numbers)
+    (list:fold (function (last current)
+                 (if (< last current)
+                     current
+                     last))
+               number
+               numbers)))
