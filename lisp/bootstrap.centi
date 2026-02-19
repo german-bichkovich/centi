@@ -33,16 +33,11 @@
 (:define pair:head
   (wrap (special ((head . nil)) nil head)))
 
-# (apply function args)
-# (apply function args environment)
-# (apply pair '(a 2)) <=> (evaluate '(pair 'a '2) (environment))
-# (apply pair '(a 2) env) <=> (evaluate '(pair 'a '2) env)
+# (apply pair '(1 2)) <=> (pair '1 '2)
 (:define apply
-  (wrap (special (f args . rest) nil
+  (wrap (special (f args) nil
           (evaluate (pair (unwrap f) args)
-                    (if (pair? rest)
-                        (pair:head rest)
-                        (environment))))))
+                    (environment)))))
 
 # (list:prepend 'x) <=> 'x
 # (list:prepend 'x 'y) <=> (pair 'x 'y)
