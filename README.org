@@ -278,12 +278,6 @@ applies to the first word of heap space:
 
 * TODO
 
-- Header package with things i need often
-  (defpackage header
-    (:use :cl)
-    (:export . names))
-    +
-  (defun package:symbol) ...
 - helpers to generate implementations for all array types?
 - generic functions and oop
 - optional immutability mechanisms?
@@ -300,6 +294,7 @@ applies to the first word of heap space:
 - check extensible effects
 - write a partial evaluator
 - find a good hash function
+- implement a profiler
 
 #+begin_src elisp
   (progn
