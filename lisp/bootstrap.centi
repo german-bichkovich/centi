@@ -313,17 +313,15 @@
   (function (object)
     (== object false)))
 
-# TODO not implemented
-# # (list:map! function list)
-# # Mutate the list by applying f to each of its elements.
-# (define list:map!
-#   (function (f l)
-#     (if (pair? l)
-#         (pair (f (pair:head l))
-#               (list:map f (pair:tail l)))
-#         '())))
+# Mutate the list by applying f to each of its elements.
+(define list:map!
+  (function (f list)
+    (loop ((l list))
+      (when (pair? l)
+        (pair:head! l (f (pair:head l)))
+        (recurse (pair:tail l))))
+    list))
 
-# (dotimes ('bind 'count) . 'body)
 # Execute body number of times.
 # Bind is bound to the current iteration number, starting with 0.
 (define dotimes
