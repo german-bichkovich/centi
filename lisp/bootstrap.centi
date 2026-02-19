@@ -192,6 +192,86 @@
     (evaluate (list:prepend named-let 'recurse bindings body)
               env)))
 
+(define hash
+  (function (object)
+    (ifs ((string? object) (string:length object))
+         ((symbol? object) (hash (symbol:name object)))
+         (true             0))))
+
+(define hashmap::new
+  (function (capacity hash-function)
+    (record 'hashmap
+            (array::new capacity ())
+            hash-function)))
+
+(define hashmap::data
+  (function (hashmap)
+    (record:get hashmap 0)))
+
+(define hashmap::data!
+  (function (hashmap value)
+    (record:set! hashmap 0 value)))
+
+(define hashmap:hash-function
+  (function (hashmap)
+    (record:get hashmap 1)))
+
+(define hashmap:capacity
+  (function (hashmap)
+    (array:length (hashmap::data hashmap))))
+
+(define alist:find
+  (function (alist key)
+    (if (pair? alist)
+        (let (((entry . alist) alist))
+          (if (== (pair:head entry) key)
+              entry
+              (alist:find alist key)))
+        nil)))
+
+(define hashmap:set!
+  (function (hashmap key value)
+    (let ((index (modulo ((hashmap:hash-function hashmap) key)
+                         (hashmap:capacity hashmap)))
+          (bucket (array:get (hashmap::data hashmap) index))
+          (entry (alist:find bucket key)))
+      (if (pair? entry)
+          (pair:tail! entry value)
+          (array:set! (hashmap::data hashmap)
+                      index
+                      (pair (pair key value) bucket)))
+      hashmap)))
+
+# (hashmap 'a 5 'b 6) => {a 5 b 6}
+# {'a 5} <=> (hashmap 'a 5)
+# Create a hashmap out of args, with each odd
+# argument being the key, and each even - key's value.
+(define hashmap
+  (function objects
+    (let ((length (list:length objects)))
+      (if (odd? length)
+          (die "hashmap: missing value")
+          (loop ((h (hashmap::new length hash))
+                 (os objects))
+            (if (pair? os)
+                (let (((key value . rest) os))
+                  (recurse (hashmap:set! h key value) rest))
+                h))))))
+
+# (hashmap:get hashmap key)
+# (hashmap:get hashmap key default)
+(define hashmap:get
+  (function (hashmap key . rest)
+    (let ((index (modulo ((hashmap:hash-function hashmap) key)
+                         (hashmap:capacity hashmap)))
+          (bucket (array:get (hashmap::data hashmap) index))
+          (entry (alist:find bucket key)))
+      (if (pair? entry)
+          (pair:tail entry)
+          (if (pair? rest)
+              (pair:head rest)
+              nil)))))
+
 ######################################################################
 
 # Evaluate forms in a sequence. If any of the arguments are
@@ -478,90 +558,10 @@
 
 ######################################################################
 
-(define alist:find
-  (function (alist key)
-    (if (pair? alist)
-        (let (((entry . alist) alist))
-          (if (== (pair:head entry) key)
-              entry
-              (alist:find alist key)))
-        nil)))
-
-(define hash
-  (function (object)
-    (ifs ((string? object) (string:length object))
-         ((symbol? object) (hash (symbol:name object)))
-         (true             0))))
-
-(define hashmap::new
-  (function (capacity hash-function)
-    (record 'hashmap
-            (array::new capacity ())
-            hash-function)))
-
 (define hashmap?
   (function (object)
     (and (record? object)
          (== (record:type object) 'hashmap))))
-
-(define hashmap::data
-  (function (hashmap)
-    (record:get hashmap 0)))
-
-(define hashmap::data!
-  (function (hashmap value)
-    (record:set! hashmap 0 value)))
-
-(define hashmap:hash-function
-  (function (hashmap)
-    (record:get hashmap 1)))
-
-(define hashmap:capacity
-  (function (hashmap)
-    (array:length (hashmap::data hashmap))))
-
-(define hashmap:set!
-  (function (hashmap key value)
-    (let ((index (modulo ((hashmap:hash-function hashmap) key)
-                         (hashmap:capacity hashmap)))
-          (bucket (array:get (hashmap::data hashmap) index))
-          (entry (alist:find bucket key)))
-      (if (pair? entry)
-          (pair:tail! entry value)
-          (array:set! (hashmap::data hashmap)
-                      index
-                      (pair (pair key value) bucket)))
-      hashmap)))
-
-# (hashmap:get hashmap key)
-# (hashmap:get hashmap key default)
-(define hashmap:get
-  (function (hashmap key . rest)
-    (let ((index (modulo ((hashmap:hash-function hashmap) key)
-                         (hashmap:capacity hashmap)))
-          (bucket (array:get (hashmap::data hashmap) index))
-          (entry (alist:find bucket key)))
-      (if (pair? entry)
-          (pair:tail entry)
-          (if (pair? rest)
-              (pair:head rest)
-              nil)))))
-
-# (hashmap 'a 5 'b 6) => {a 5 b 6}
-# {'a 5} <=> (hashmap 'a 5)
-# Create a hashmap out of args, with each odd
-# argument being the key, and each even - key's value.
-(define hashmap
-  (function objects
-    (let ((length (list:length objects)))
-      (if (odd? length)
-          (die "hashmap: missing value")
-          (loop ((h (hashmap::new length hash))
-                 (os objects))
-            (if (pair? os)
-                (let (((key value . rest) os))
-                  (recurse (hashmap:set! h key value) rest))
-                h))))))
 
 (define hashmap:new
   (function (options)
