@@ -613,9 +613,12 @@
     list))
 
 # Mutate the hashmap by applying f to each of its key/value pairs.
-# TODO test
 (define hashmap:map!
-  (function (f h)))
+  (function (f hashmap)
+    (array:map! (function (bucket)
+                  (list:map! f bucket))
+                (hashmap::data hashmap))
+    hashmap))
 
 # Create a new hashmap in which each key/value pair is the result of
 # applying function to the key/value pair of hashmap.
