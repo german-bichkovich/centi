@@ -2,8 +2,13 @@
 
 (defstruct (symbol (:copier nil)
                    (:predicate symbol?)
-                   (:constructor symbol (name)))
-  name)
+                   (:constructor symbol (%name)))
+  %name)
+
+(defun symbol-name (symbol)
+  (if symbol
+      (symbol-%name symbol)
+      "()"))
 
 (defmethod print-object ((object symbol) stream)
   (format stream "~a" (symbol-name object)))
