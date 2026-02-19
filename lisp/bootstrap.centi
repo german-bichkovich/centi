@@ -180,17 +180,16 @@
 (define named-let
   (special (name bindings . body) env
     (let ((ptree (list:map list:first bindings))
-          (values (list:map list:second bindings)))
-      (evaluate (list let
-                      (list (list name
-                                  (list:prepend 'function
-                                                ptree
-                                                body)))
-                      (pair name values))
-                env))))
+          (values (list:map list:second bindings))
+          (inner (environment env)))
+      (evaluate (pair name values)
+                (environment:set! inner
+                                  name
+                                  (evaluate (list:prepend function
+                                                          ptree
+                                                          body)
+                                            inner))))))
 
-# (loop bindings . body)
-# Same as (named-let recurse bindings . body).
 # Inspired by clojure's loop/recur.
 (define loop
   (special (bindings . body) env
