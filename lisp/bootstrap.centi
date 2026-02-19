@@ -7,9 +7,9 @@
 (environment:set! ((special () env env))
                   ((special (x) nil x) :define)
                   (special (symbol value) env
-		    (environment:set! env
-		                      symbol
-				      (evaluate value env))))
+                    (environment:set! env
+                                      symbol
+                                      (evaluate value env))))
 
 # NOTE defined here because it's part of the repl and
 #      not doing so will break it.
@@ -94,7 +94,6 @@
             (evaluate (pair ifs clauses) env)
             nil))))
 
-# Evaluate forms in current environment, returning last result.
 (:define do
   (special forms env
     (evaluate-many forms env)))
@@ -105,7 +104,8 @@
 (:define destructure
   (function (ptree value callback)
     (ifs ((symbol? ptree)
-          (ifs ((== ptree nil))
+          (ifs ((== ptree nil)
+                nil)
                ((== ptree ())
                 (if (== value ())
                     nil
@@ -307,15 +307,6 @@
 (define not
   (function (object)
     (== object false)))
-
-# Mutate the list by applying f to each of its elements.
-(define list:map!
-  (function (f list)
-    (loop ((l list))
-      (when (pair? l)
-        (pair:head! l (f (pair:head l)))
-        (recurse (pair:tail l))))
-    list))
 
 # Execute body number of times.
 # Bind is bound to the current iteration number, starting with 0.
@@ -611,6 +602,15 @@
                   nil
                   hashmap)
     hashmap))
+
+# Mutate the list by applying f to each of its elements.
+(define list:map!
+  (function (f list)
+    (loop ((l list))
+      (when (pair? l)
+        (pair:head! l (f (pair:head l)))
+        (recurse (pair:tail l))))
+    list))
 
 # Mutate the hashmap by applying f to each of its key/value pairs.
 # TODO test
