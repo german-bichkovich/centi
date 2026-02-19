@@ -190,6 +190,7 @@
                                                           body)
                                             inner))))))
 
+# (loop ((a 5)) a) <=> (named-let recurse ((a 5)) a)
 # Inspired by clojure's loop/recur.
 (define loop
   (special (bindings . body) env
