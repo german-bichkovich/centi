@@ -92,14 +92,12 @@
 # (ifs (x 1 2) (true 0)) <=> (if x (do 1 2) (if true (do 0) nil))
 # If form with multiple tests.
 (:define ifs
-  (special forms env
-    (if (pair? forms)
-        ((function (((test . body) . forms))
-           (if (evaluate test env)
-               (evaluate-many body env)
-               (evaluate (pair ifs forms) env)))
-         forms)
-        nil)))
+  (special ((test . body) . clauses) env
+    (if (evaluate test env)
+        (evaluate-many body env)
+        (if (pair? clauses)
+            (evaluate (pair ifs clauses) env)
+            nil))))
 
 # Evaluate forms in current environment, returning last result.
 (:define do
