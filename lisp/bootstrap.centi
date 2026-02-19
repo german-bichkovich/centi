@@ -173,14 +173,6 @@
 (define list:second
   (function ((nil value . nil)) value))
 
-# (defun name . body)
-# (defun identity (x) x) <=> (define identity (function (x) x)).
-(define defun
-  (special (name . body) env
-    (let ((value (evaluate (pair function body) env)))
-      (environment:set! env name value)
-      value)))
-
 # Like let, but binds symbol "name" in its body
 # to a function, that takes as many arguments as there are
 # bindings, and when called, binds all positional arguments

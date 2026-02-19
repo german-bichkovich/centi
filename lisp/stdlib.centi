@@ -87,6 +87,13 @@
 
 ### Pattern matching #################################################
 
+# (defun identity (x) x) <=> (define identity (function (x) x)).
+(define defun
+  (special (name . body) env
+    (let ((value (evaluate (pair function body) env)))
+      (environment:set! env name value)
+      value)))
+
 (defun match::matches? (ptree form)
   (if* ((== ptree ())   (== form ()))
        ((symbol? ptree) true)
