@@ -438,9 +438,8 @@
 
 (define array:map!
   (function (f array)
-    (let ((here (environment:here)))
-      (dotimes (n (array:length array))
-        (array:set! a n (f (array:get array n)))))))
+    (dotimes (n (array:length array))
+      (array:set! array n (f (array:get array n))))))
     
 # (array:map function a)
 (define array:map
