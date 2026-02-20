@@ -278,6 +278,7 @@ applies to the first word of heap space:
 
 * TODO
 
+- proper interface for defining records
 - generic functions and oop
   implement an efficient print generic
 - optional immutability mechanisms?
