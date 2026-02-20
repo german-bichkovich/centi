@@ -278,10 +278,11 @@ applies to the first word of heap space:
 
 * TODO
 
-- helpers to generate implementations for all array types?
 - generic functions and oop
+  implement an efficient print generic
 - optional immutability mechanisms?
   good idea for stdenv after initial setup is completed
+- helpers to generate implementations for all array types?
 - make all top level forms be evaluated at compile time, but main at runtime
 - generic vectors (use any array for storage)
 - implement byte-arrays and bit-arrays based on string records

@@ -522,9 +522,7 @@
   (function (f value array)
     (let ((here (environment:here)))
       (dotimes (n (array:length array))
-        (environment:set! here
-                          'value
-                          (f value (array:get array n))))
+        (environment:set! here 'value (f value (array:get array n))))
       value)))
 
 # Call function for each element of an array.
