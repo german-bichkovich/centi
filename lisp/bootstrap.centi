@@ -819,3 +819,15 @@
 (define vector:copy
   (function (vector)
     (vector:map identity vector)))
+
+(define special:new
+  (wrap (special (options) env
+          (evaluate (list special
+                          (hashmap:get options 'ptree nil)
+                          (hashmap:get options 'ebind nil)
+                          (hashmap:get options 'body nil))
+                    (hashmap:get options 'env env)))))
+
+(define function:new
+  (function (options)
+    (wrap (special:new options))))
