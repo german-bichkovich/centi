@@ -49,6 +49,12 @@
         (eval then env)
         (eval else env))))
 
+;; (symbol name)
+;; Create a symbol that is not interned.
+(define "symbol"
+  (function (name)
+    (symbol name)))
+
 ;; (symbol? object)
 ;; Check if object is a symbol.
 (define "symbol?"

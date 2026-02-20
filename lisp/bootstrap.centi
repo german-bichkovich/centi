@@ -831,3 +831,8 @@
 (define function:new
   (function (options)
     (wrap (special:new options))))
+
+# TODO numbers
+(define symbol:generate
+  (function ()
+    (symbol "#symbol")))
