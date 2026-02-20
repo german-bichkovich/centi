@@ -672,6 +672,51 @@
     (string::new (hashmap:get options 'length 0)
                  (hashmap:get options 'default 0))))
 
+# (maximum 3 6 9) => 9
+(define maximum
+  (function (number . numbers)
+    (list:fold (function (last current)
+                 (if (< last current)
+                     current
+                     last))
+               number
+               numbers)))
+
+######################################################################
+
+(define vector:new
+  (function (options)
+    (let ((capacity (hashmap:get options 'capacity 0))
+          (length (hashmap:get options 'length capacity)))
+      (record 'vector
+              length
+              (array::new capacity nil)))))
+
+(define vector?
+  (function (object)
+    (and (record? object)
+         (== (record:type object) 'vector))))
+
+(define vector:length
+  (function (vector)
+    (record:get vector 0)))
+
+(define vector:length!
+  (function (vector value)
+    (record:set! vector 0 value)))
+
+(define vector::data
+  (function (vector)
+    (record:get vector 1)))
+
+(define vector::data!
+  (function (vector value)
+    (record:set! vector 1 value)))
+
+(define vector:capacity
+  (function (vector)
+    (array:length (vector::data vector))))
+
 # (minimum 3 6 9) => 3
 (define minimum
   (function (number . numbers)
@@ -682,12 +727,97 @@
                number
                numbers)))
 
-# (maximum 3 6 9) => 9
-(define maximum
-  (function (number . numbers)
-    (list:fold (function (last current)
-                 (if (< last current)
-                     current
-                     last))
-               number
-               numbers)))
+(define vector:resize!
+  (function (vector new-size)
+    (if (== new-size (vector:capacity vector))
+        vector
+        (let ((data (vector::data vector))
+              (new-data (array::new new-size nil)))
+          (dotimes (n (minimum (array:length data) new-size))
+            (array:set! new-data n (array:get data n)))
+          (vector::data! vector new-data)
+          vector))))
+
+(define vector:shrink!
+  (function (vector)
+    (vector:resize! vector (vector:length vector))))
+
+(define vector:set!
+  (function (vector index value)
+    (array:set! (vector::data vector) index value)
+    vector))
+
+# (vector:get vector index)
+# (vector:get vector index default)
+(define vector:get
+  (function (vector index . rest)
+    (array:get (vector::data vector) index (if (pair? rest)
+                                               (pair:head rest)
+                                               nil))))
+
+(define vector:push!
+  (function (vector object)
+    (let ((length (vector:length vector))
+          (capacity (vector:capacity vector)))
+    (when (<= capacity length)
+      (vector:resize! vector (* length 2)))
+    (vector:length! vector (+ length 1))
+    (vector:set! vector length object))))
+
+(define vector:pop!
+  (function (vector)
+    (let ((length (- (vector:length vector) 1)))
+      (vector:length! vector length)
+      (vector:get vector length))))
+
+(define vector
+  (function objects
+    (list:fold vector:push!
+               (vector:new {'capacity (list:length objects)
+                            'length 0})
+               objects)))
+
+(define vector:fold
+  (function (f value vector)
+    (let ((here (environment:here))
+          (data (vector::data vector)))
+      (dotimes (n (vector:length vector))
+        (environment:set! here
+                          'value
+                          (f value (array:get data n))))
+      value)))
+
+(define vector:each
+  (function (f vector)
+    (vector:fold (function (nil e) (f e)) nil vector)
+    vector))
+
+(define vector:print
+  (function (vector)
+    (write "[")
+    (vector:fold (function (first? e)
+                   (when-not first? (write " "))
+                   (print e)
+                   false)
+                 true
+                 vector)
+    (write "]")
+    vector))
+
+(define vector:map
+  (function (f vector)
+    (vector:fold (function (v e)
+                   (vector:push! v (f e)))
+                 (vector:new {'capacity (vector:length vector)
+                              'length 0})
+                 vector)))
+
+(define vector:map!
+  (function (f vector)
+    (dotimes (n (vector:length vector))
+      (vector:set! vector n (f (vector:get vector n))))
+    vector))
+
+(define vector:copy
+  (function (vector)
+    (vector:map identity vector)))

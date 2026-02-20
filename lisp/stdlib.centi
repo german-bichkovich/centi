@@ -8,10 +8,6 @@
     (evaluate (list:prepend named-let 'recurse bindings body)
               env)))
 
-### Vectors ##########################################################
-
-(define vector array)
-
 ### Hashmaps #########################################################
 
 # (each function hashmap)
