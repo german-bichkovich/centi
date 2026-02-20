@@ -198,10 +198,15 @@
                 :element-type t)))
 
 ;; (array:get array index)
+;; (array:get array index default)
 ;; Get element of an array at index.
 (define "array:get"
-  (function (a n)
-    (aref a n)))
+  (function (a n . rest)
+    (if (< -1 n (length a))
+        (aref a n)
+        (if (consp rest)
+            (car rest)
+            (intern "nil")))))
 
 ;; (array:set! array index value)
 ;; Set element of an array at index.
