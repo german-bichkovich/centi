@@ -878,3 +878,14 @@
 (define list->array
   (function (list)
     (apply array list)))
+
+(define array:fold-right
+  (function (f value array)
+    (let ((here (environment:here))
+          (length (array:length array)))
+      (dotimes (n length)
+        (environment:set! here
+                          'value
+                          (f value
+                             (array:get array (- length n 1)))))
+      value)))
