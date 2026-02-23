@@ -192,29 +192,122 @@
     (evaluate (list:prepend named-let 'recurse bindings body)
               env)))
 
+# (+ 1 2 3) => 6
+(define +
+  (function numbers
+    (list:fold (function (a e) (- e (- 0 a))) 0 numbers)))
+
+(define list:length
+  (function (list)
+    (list:fold (function (n nil) (+ n 1)) 0 list)))
+
+(define array
+  (function objects
+    (pair:tail
+     (list:fold (function ((n . array) e)
+                  (pair (+ n 1) (array:set! array n e)))
+                (pair 0 (array::new (list:length objects) nil))
+                objects))))
+
+# (list:enumerate '(a b c)) => ((0 . a) (1 . b) (2 . c))
+(define list:enumerate
+  (function (list)
+    (loop ((n 0)
+           (l list))
+      (if (pair? l)
+          (pair (pair n (pair:head l))
+                (recurse (+ n 1) (pair:tail l)))
+          l))))
+
+# Apply function to each element of the list and
+# return the original list.
+(define list:each
+  (function (f list)
+    (list:fold (function (nil e) (f e)) nil list)
+    list))
+
+# (when true 1 2) <=> (if true (do 1 2) nil)
+(define when
+  (special (test . body) env
+    (if (evaluate test env)
+        (evaluate-many body env)
+        nil)))
+
+# (when-not true 1 2) <=> (if true nil (do 1 2))
+(define when-not
+  (special (test . body) env
+    (if (evaluate test env)
+        nil
+        (evaluate-many body env))))
+
+(define define-record-type
+  (special (name constructor-name predicate-name . slot-forms) env
+    (let ((slot-names
+            (list:map pair:head slot-forms))
+          (type
+            (apply array
+                   (pair name slot-names)))
+          (constructor
+            (evaluate (list function
+                            slot-names
+                            (list:prepend record type slot-names))
+                      env))
+          (predicate
+            (function (object)
+              (and (record? object)
+                   (== (record:type object) type))))
+          (make-accessor
+            (function (index)
+              (evaluate (list function
+                              (list name)
+                              (list when
+                                    (list predicate name)
+                                    (list record:get name index)))
+                        env)))
+          (make-mutator
+            (function (index)
+              (evaluate (list function
+                              (list name 'value)
+                              (list when
+                                    (list predicate name)
+                                    (list record:set! name
+                                          index
+                                          'value)))
+                        env))))
+      (environment:set! env constructor-name constructor)
+      (environment:set! env predicate-name predicate)
+      (list:each (function ((index nil accessor mutator))
+                   (environment:set! env
+                                     accessor
+                                     (make-accessor index))
+                   (when-not (== mutator nil)
+                     (environment:set! env
+                                       mutator
+                                       (make-mutator index))))
+                 (list:enumerate slot-forms))
+      nil)))
+
 (define hash
   (function (object)
     (ifs ((string? object) (string:length object))
          ((symbol? object) (hash (symbol:name object)))
          (true             0))))
 
+(define-record-type hashmap
+  hashmap::new0
+  hashmap?
+  (hash-function hashmap:hash-function nil)
+  (:data hashmap::data hashmap::data!))
+
+# (define-record-type hashmap
+#   (hashmap::new (hashmap:hash-function nil)
+#                 (hashmap::data hashmap::data!))
+#   (hashmap? object))
+
 (define hashmap::new
   (function (capacity hash-function)
-    (record 'hashmap
-            (array::new capacity ())
-            hash-function)))
-
-(define hashmap::data
-  (function (hashmap)
-    (record:get hashmap 0)))
-
-(define hashmap::data!
-  (function (hashmap value)
-    (record:set! hashmap 0 value)))
-
-(define hashmap:hash-function
-  (function (hashmap)
-    (record:get hashmap 1)))
+    (hashmap::new0 hash-function
+                   (array::new capacity ()))))
 
 (define hashmap:capacity
   (function (hashmap)
@@ -301,24 +394,6 @@
                        (evaluate (pair:head forms) env))
               false)))))
 
-(define list:length
-  (function (list)
-    (list:fold (function (n nil) (+ n 1)) 0 list)))
-
-# (when true 1 2) <=> (if true (do 1 2) nil)
-(define when
-  (special (test . body) env
-    (if (evaluate test env)
-        (evaluate-many body env)
-        nil)))
-
-# (when-not true 1 2) <=> (if true nil (do 1 2))
-(define when-not
-  (special (test . body) env
-    (if (evaluate test env)
-        nil
-        (evaluate-many body env))))
-
 (define while
   (special (test . body) env
     (loop ((value nil))
@@ -353,13 +428,6 @@
 (define list:reverse
   (function (list)
     (list:fold (function (a e) (pair e a)) () list)))
-
-# Apply function to each element of the list and
-# return the original list.
-(define list:each
-  (function (f list)
-    (list:fold (function (nil e) (f e)) nil list)
-    list))
 
 # (list:filter odd? '(1 2 3 4 5)) => (1 3 5)
 (define list:filter
@@ -408,11 +476,6 @@
                                                             bind
                                                             n)))
                   value)))))))
-
-# (+ 1 2 3) => 6
-(define +
-  (function numbers
-    (list:fold (function (a e) (- e (- 0 a))) 0 numbers)))
 
 # (* 1 2 3 4) => 24
 (define *
@@ -485,14 +548,6 @@
   (function (number)
     (when (number? number)
       (== (modulo number 2) 1))))
-
-(define array
-  (function objects
-    (pair:tail
-     (list:fold (function ((n . array) e)
-                  (pair (+ n 1) (array:set! array n e)))
-                (pair 0 (array::new (list:length objects) nil))
-                objects))))
 
 (define array:copy
   (function (array)
@@ -682,34 +737,17 @@
 
 ######################################################################
 
+(define-record-type vector
+  vector::new
+  vector?
+  (length vector:length vector:length!)
+  (:data vector::data vector::data!))
+
 (define vector:new
   (function (options)
     (let ((capacity (hashmap:get options 'capacity 0))
           (length (hashmap:get options 'length capacity)))
-      (record 'vector
-              length
-              (array::new capacity nil)))))
-
-(define vector?
-  (function (object)
-    (and (record? object)
-         (== (record:type object) 'vector))))
-
-(define vector:length
-  (function (vector)
-    (record:get vector 0)))
-
-(define vector:length!
-  (function (vector value)
-    (record:set! vector 0 value)))
-
-(define vector::data
-  (function (vector)
-    (record:get vector 1)))
-
-(define vector::data!
-  (function (vector value)
-    (record:set! vector 1 value)))
+      (vector::new length (array::new capacity nil)))))
 
 (define vector:capacity
   (function (vector)
@@ -836,3 +874,7 @@
 (define symbol:generate
   (function ()
     (symbol "#symbol")))
+
+(define list->array
+  (function (list)
+    (apply array list)))

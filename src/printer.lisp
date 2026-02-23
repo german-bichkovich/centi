@@ -34,7 +34,7 @@
              (%princ "]"))
            (print-record (o)
              (%princ "#<")
-             (print1 (record-type o))
+             (print1 (aref (record-type o) 0))
              (%princ ">"))
            (print1 (o)
              (cond ((null o)       (print-empty-list))
