@@ -1,0 +1,21 @@
+#!/bin/sh
+# Centi build script.
+
+cd "$(dirname $(realpath "$0"))/.."
+export CL_SOURCE_REGISTRY="$PWD"
+
+findLisp(){
+	for i in "$LISP" sbcl ecl; do
+		if command -v "$i" /dev/null; then
+			echo "$i"
+			return
+		fi
+	done
+}
+
+exec $(findLisp) <<- EOF
+	(require :asdf)
+	(asdf:disable-output-translations)
+	(asdf:load-system :centi)
+	(asdf:make :centi)
+EOF

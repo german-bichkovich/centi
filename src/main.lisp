@@ -25,8 +25,12 @@
         (dolist (file files)
           (load (format nil "~a/~a.centi" path file)))))))
 
-(defun main (&rest args)
-  (load-stdlib)
-  (if (null args)
-      (repl)
-      (load (car args))))
+(defun main ()
+  (destructuring-bind (&optional file-path)
+      uiop:*command-line-arguments*
+    (load-stdlib)
+    (if file-path
+        (if (uiop:file-exists-p file-path)
+            (load file-path)
+            (error "centi: file doesn't exist ~a" file-path))
+        (repl))))

@@ -4,6 +4,19 @@ Centilisp, or just Centi, is a lisp dialect heavily inspired by
 Kernel, Picolisp, Scheme and Common Lisp.
 
 * Usage
+
+*Running the REPL*
+
+#+begin_src sh
+  centi
+#+end_src
+
+*Loading a source file*
+
+#+begin_src sh
+  centi filename.centi
+#+end_src
+
 * Conventions
 ** Top-level symbols
 
@@ -278,7 +291,6 @@ applies to the first word of heap space:
 
 * TODOs
 
-- standalone executable
 - figure out a consistent and stdlib structure - I want one file per
   data type (list, array, vector, hashmap, etc.)
 - generic functions and oop

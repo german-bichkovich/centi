@@ -16,4 +16,7 @@
                              (:file "printer")
                              (:file "interpreter")
                              (:file "builtins")
-                             (:file "main")))))
+                             (:file "main"))))
+  :build-operation "program-op"
+  :build-pathname "./bin/centi"
+  :entry-point "centi::main")
