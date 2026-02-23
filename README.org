@@ -278,6 +278,9 @@ applies to the first word of heap space:
 
 * TODOs
 
+- standalone executable
+- figure out a consistent and stdlib structure - I want one file per
+  data type (list, array, vector, hashmap, etc.)
 - generic functions and oop
   implement an efficient print generic
 - optional immutability mechanisms?
@@ -296,6 +299,7 @@ applies to the first word of heap space:
 - write a partial evaluator
 - find a good hash function
 - implement a profiler
+- look into algebraic effects
 
 #+begin_src elisp
   (progn
