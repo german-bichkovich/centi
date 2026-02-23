@@ -1,8 +1,8 @@
 (defsystem :centi
   :name "Centi"
   :version "0.0.1"
-  :author "Geri"
-  :maintainer "Geri"
+  :author "German Bichkovich"
+  :maintainer "German Bichkovich"
   :description "My very own lisp"
   :depends-on (#:uiop)
   :components ((:module "src"
