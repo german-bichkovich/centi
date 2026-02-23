@@ -321,9 +321,12 @@ applies to the first word of heap space:
                (lambda ()
                  (sly-eval-async
                      '(cl:progn
-                       (cl:dolist (p '("/home/geri/centi-999/"
-                                       "/data/data/com.termux/files/home/centi-999/"))
-                                  (cl:pushnew (cl:pathname p) asdf:*central-registry* :test 'cl:equalp))
+                       (cl:pushnew
+                        (cl:pathname
+                         (cl:format nil "~a/"
+                                    (uiop:getenv "CENTI_HOME")))
+                        asdf:*central-registry*
+                        :test 'cl:equalp)
                        (asdf:load-system :centi))
                    #'identity
                    :cl-user))))

@@ -17,13 +17,10 @@
          (terpri))))
 
 (defun load-stdlib ()
-  (let ((paths '("/data/data/com.termux/files/home/centi-999/lisp"
-                 "/home/geri/centi-999/lisp"))
+  (let ((home (uiop:getenv "CENTI_HOME"))
         (files '("bootstrap" "stdlib")))
-    (dolist (path paths)
-      (when (uiop:directory-exists-p path)
-        (dolist (file files)
-          (load (format nil "~a/~a.centi" path file)))))))
+    (dolist (file files)
+      (load (format nil "~a/lisp/~a.centi" home file)))))
 
 (defun main ()
   (destructuring-bind (&optional file-path)
