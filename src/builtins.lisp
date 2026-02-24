@@ -342,10 +342,9 @@
 
 ;; (exit code)
 ;; Kill the interpreter and make it return the provided exit code.
-;; TODO naming?
-(define "system:exit"
+(define "exit"
   (function (code)
-    (uiop:die code)))
+    (uiop:quit code)))
 
 ;; TODO remove
 ;; (die message)
