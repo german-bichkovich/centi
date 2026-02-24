@@ -22,7 +22,13 @@
                       (return)))))
            (print-string (o)
              (%princ #\")
-             (loop for c across o do (%princ c))
+             (loop for c across o do
+               (%princ (case c
+                         (#\newline "\n")
+                         (#\tab "\\t")
+                         (#\return "\\r")
+                         (#\escape "\\e")
+                         (t c))))
              (%princ #\"))
            (print-array (o)
              (%princ "[")
@@ -37,6 +43,6 @@
                    ((consp o)      (print-list o))
                    ((stringp o)    (print-string o))
                    ((arrayp o)     (print-array o))
-                   (t              (cl:princ o)))))
+                   (t              (princ o)))))
     (print1 thing)
     thing))

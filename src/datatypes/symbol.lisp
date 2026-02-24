@@ -11,7 +11,21 @@
       "()"))
 
 (defmethod print-object ((object symbol) stream)
-  (format stream "~a" (symbol-name object)))
+  (loop for c across (symbol-name object) do
+    (princ (case c
+             (#\return "\\r")
+             (#\escape "\\e")
+             (#\newline "\\n")
+             (#\tab "\\t")
+             (#\space "\\ ")
+             (#\( "\\(")
+             (#\) "\\)")
+             (#\[ "\\[")
+             (#\] "\\]")
+             (#\{ "\\{")
+             (#\} "\\}")
+             (t c))
+           stream)))
 
 (defvar *intern-table*
   (let ((h (make-hash-table :test 'equal)))
