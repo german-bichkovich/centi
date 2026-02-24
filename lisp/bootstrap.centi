@@ -35,9 +35,9 @@
 
 # (apply pair '(1 2)) <=> (pair '1 '2)
 (:define apply
-  (wrap (special (f args) nil
+  (wrap (special (f args) env
           (evaluate (pair (unwrap f) args)
-                    (environment)))))
+                    env))))
 
 # (list:prepend 'x) <=> 'x
 # (list:prepend 'x 'y) <=> (pair 'x 'y)
