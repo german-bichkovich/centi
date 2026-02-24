@@ -322,8 +322,9 @@ applies to the first word of heap space:
 
 * TODOs
 
-- figure out a consistent and stdlib structure - I want one file per
-  data type (list, array, vector, hashmap, etc.)
+- figure out a consistent stdlib structure - I'd prefer one file
+  per data type (list, array, vector, hashmap, etc.)
+  - make hashmap:set! resize the data array
 - generic functions and oop
   implement an efficient print generic
 - optional immutability mechanisms?
@@ -332,11 +333,8 @@ applies to the first word of heap space:
 - make all top level forms be evaluated at compile time, but main at runtime
 - generic vectors (use any array for storage)
 - implement byte-arrays and bit-arrays based on string records
-- re-implement every type, with custom print functions?
-  figure out overriding print function?
 - make destructure & apply generic functions, allow open extension
 - janet-like images
-- janet-like module system?
 - read up on checking if function is pure or not
 - check extensible effects
 - write a partial evaluator
