@@ -316,7 +316,10 @@
 (define hashmap::new
   (function (capacity hash-function)
     (hashmap::new0 hash-function
-                   (array::new capacity ()))))
+                   (array::new (if (== capacity 0)
+                                   1
+                                   capacity)
+                               ()))))
 
 (define hashmap:capacity
   (function (hashmap)
