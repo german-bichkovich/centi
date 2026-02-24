@@ -299,11 +299,6 @@
   (hash-function hashmap:hash-function nil)
   (:data hashmap::data hashmap::data!))
 
-# (define-record-type hashmap
-#   (hashmap::new (hashmap:hash-function nil)
-#                 (hashmap::data hashmap::data!))
-#   (hashmap? object))
-
 (define hashmap::new
   (function (capacity hash-function)
     (hashmap::new0 hash-function
