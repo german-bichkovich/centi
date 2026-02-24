@@ -19,4 +19,4 @@
   r)
 
 (defmethod print-object ((object record) stream)
-  (format stream "#<~a>" (record-get object 0)))
+  (format stream "#<~a>" (aref (record-type object) 0)))
