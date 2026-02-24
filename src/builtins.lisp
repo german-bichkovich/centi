@@ -19,7 +19,8 @@
 
 ;;; Bootstrap ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (evaluate form ?env)
+;; (evaluate form)
+;; (evaluate form environment)
 ;; Evaluate form in provided or current environment.
 (define "evaluate"
   (wrap (special (form . rest) env
@@ -298,7 +299,8 @@
   (function (object)
     (environment? object)))
 
-;; (environment ?parent)
+;; (environment)
+;; (environment parent)
 ;; Create a new environment with specified parent environment.
 (define "environment"
   (function args
