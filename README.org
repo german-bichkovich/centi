@@ -1,7 +1,15 @@
 * Introduction
 
-Centilisp, or just Centi, is a lisp dialect heavily inspired by
-Kernel, Picolisp, Scheme and Common Lisp.
+Centilisp, or just Centi, is a simple lisp dialect heavily inspired
+by Kernel, Picolisp, Scheme and Common Lisp.
+
+* Build
+
+As of now, if you have SBCL installed, centi may be built with a script:
+
+#+begin_src sh
+  ./bin/build
+#+end_src
 
 * Usage
 
@@ -17,6 +25,26 @@ Kernel, Picolisp, Scheme and Common Lisp.
   centi filename.centi
 #+end_src
 
+* Development
+
+You can start centi with a repl by starting Common Lisp REPL and doing the following:
+
+#+begin_src lisp
+  ;; Add path to repository to asdf:*central-registry*
+  (pushnew (pathname "/path/to/centi-repository.git")
+           asdf:*central-registry*
+           :test 'cl:equalp)
+
+  ;; Load centi
+  (asdf:load-system :centi)
+
+  ;; Start centi
+  (centi:main)
+#+end_src
+
+Despite build script only working on SBCL, centi had originally been
+developed both on SBCL and ECL using the approach above.
+
 * Conventions
 ** Top-level symbols
 
@@ -24,21 +52,33 @@ It's highly encouraged to name your forms without using
 non-standard abbriviations (or any whenever feasable).
 
 If concept is made up from many words, use kebab-case:
-- when-not
-- evaluate-many
+- ~when-not~
+- ~evaluate-many~
 
 ** Private variables
 
 Sometimes, variables are defined on top level but are not needed
 outside of the module and are just an implementation detail.
-For those cases, symbols are prefixed with ':'.
+For those cases, symbols are prefixed with ":".
 
 For example:
-- :print1
-- :fn-helper
-- :table
+- ~:print1~
+- ~:fn-helper~
+- ~:table~
 
-** Namespaces
+** Predicates
+
+All predicate function names should end with "?".
+
+For example:
+- ~number?~
+- ~function?~
+- ~pair?~
+
+Technically, any function that returns false or anything
+else may be a predicate, but it tends to confuse more than help.
+
+** Namespaced symbols
 
 It's prefferable to import symbols from other namespaces
 using a prefix over including the symbol directly, because
@@ -46,20 +86,11 @@ it's easier to track where the symbol is from. ':' is the
 default separator between namespace name and symbol name.
 
 For example:
-- hashmap:get
-- array:nth
-- list:fold
-- core.collections.list:fold # nested namespace
-- array::new # private variable in a namespace
-
-** Predicates
-
-All predicate function names should end with "?".
-
-For example: number? function? pair?
-
-Technically, any function that returns false or anything
-else may be a predicate, but it tends to confuse more than help.
+- ~hashmap:get~
+- ~array:nth~
+- ~list:fold~
+- ~core.collections.list:fold~ - nested namespace
+- ~array::new~ - private variable in a namespace
 
 * Implementation details
 ** Design decisions
@@ -88,7 +119,7 @@ issue, but I plan to tackle it using a partial evaluator.
 
 Although you can, and sometimes probably should, represent AST
 with vectors, arrays or other sequences, there are a few reasons
-I've decided to use pair-based lists for Centi's AST instead:
+I've decided to use pair-based lists for Centi AST instead:
 
 - You can share structure between many lists.
   It's especially important for Centi, as fexprs are processed
@@ -104,7 +135,7 @@ I've decided to use pair-based lists for Centi's AST instead:
   static nature.
   To prevent the case when an improper list getting created
   breaks simplicity, Centi opts in for considering any non-pair
-  at last tail of a pair to be terminating element, not only ().
+  at last tail of a pair to be terminating element, not only ~()~.
 
 - Nicer recursive interfaces.
   Recursion with arrays is often either ugly (e.g. passing index
@@ -139,7 +170,7 @@ But there are drawbacks in using linked lists as well:
 |-------------+---------------------------------------------------------+---------------------|
 |             | Pros                                                    | Cons                |
 | Many types  | Simple                                                  | A lot of duplicates |
-|             | Less ambiguity (array:append "123" [4 5 6])             |                     |
+|             | Less ambiguity (e.g. ~(array:append "123" [4 5 6])~)      |                     |
 |             | Mostly implementable in-language                        |                     |
 |             | It's simple to use most optimal implementation directly |                     |
 |-------------+---------------------------------------------------------+---------------------|
@@ -160,7 +191,7 @@ When read in source code, symbols are unique - symbol x will
 always refer to itself when encountered by the reader. This
 makes symbols usable as human-readable constants, for example
 you can represent a list of compass directions with
-'(north west south east).
+~'(north west south east)~.
 
 When evaluating, symbols get their value looked up lexically,
 starting from current environment and checking each parent until
