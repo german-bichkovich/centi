@@ -889,3 +889,6 @@
                           (f value
                              (array:get array (- length n 1)))))
       value)))
+
+(define comment
+  (special nil nil nil))
