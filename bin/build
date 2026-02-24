@@ -8,9 +8,12 @@ cd "$(dirname $(realpath "$0"))/.."
 export CL_SOURCE_REGISTRY="$PWD"
 
 # Build
-exec sbcl --noinform <<- EOF
+sbcl --noinform <<- EOF
 	(require :asdf)
 	(asdf:disable-output-translations)
 	(asdf:load-system :centi)
 	(asdf:make :centi)
 EOF
+
+# Remove .fasl files
+find -name '*.fasl' | xargs rm
