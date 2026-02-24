@@ -17,20 +17,6 @@
 (defparameter *stdenv* (environment)
   "Standard environment that includes all builtins.")
 
-;;; Globals ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; ;; Default truth value.
-;; (define "true" (intern "true"))
-;;
-;; ;; Canonical false value.
-;; (define "false" (intern "false"))
-;;
-;; ;; Lack of value.
-;; (define "nil" (intern "nil"))
-;;
-;; ;; Empty list.
-;; (define "()" (intern "()"))
-
 ;;; Bootstrap ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (evaluate form ?env)
@@ -367,6 +353,20 @@
 (define "die"
   (function (message)
     (error "~a" message)))
+
+;;; Globals ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ;; Default truth value.
+;; (define "true" (intern "true"))
+;;
+;; ;; Canonical false value.
+;; (define "false" (intern "false"))
+;;
+;; ;; Lack of value.
+;; (define "nil" (intern "nil"))
+;;
+;; ;; Empty list.
+;; (define "()" (intern "()"))
 
 ;;; Core ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
