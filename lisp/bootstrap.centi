@@ -240,6 +240,20 @@
         nil
         (evaluate-many body env))))
 
+# Evaluate forms in a sequence. If any of the arguments are
+# falsey, return false, otherwise continue evaluating
+# arguments and return last evaluated value.
+(define and
+  (special forms env
+    (loop ((forms forms)
+           (value true))
+      (if value
+          (if (pair? forms)
+              (recurse (pair:tail forms)
+                       (evaluate (pair:head forms) env))
+              value)
+          false))))
+
 (define define-record-type
   (special (name constructor-name predicate-name . slot-forms) env
     (let ((slot-names
@@ -360,21 +374,101 @@
               (pair:head rest)
               nil)))))
 
-######################################################################
+# (export . binds)
+# (export pair?) => {pair? pair?-value}
+(define export
+  (special binds env
+    (list:fold (function (h symbol)
+                 (hashmap:set! h symbol (evaluate symbol env)))
+               {}
+               binds)))
 
-# Evaluate forms in a sequence. If any of the arguments are
-# falsey, return false, otherwise continue evaluating
-# arguments and return last evaluated value.
-(define and
-  (special forms env
-    (loop ((forms forms)
-           (value true))
-      (if value
-          (if (pair? forms)
-              (recurse (pair:tail forms)
-                       (evaluate (pair:head forms) env))
-              value)
-          false))))
+(define identity
+  (wrap quote))
+
+# (import namespace symbols)
+# (import namespace symbols prefix)
+(define import
+  (special (namespace symbols . rest) env
+    (let ((ns
+            (evaluate namespace env))
+          (prefix
+            (if (pair? rest)
+                (symbol:name (pair:head rest))
+                ""))
+          (format
+            (if (== (string:length prefix) 0)
+                identity
+                (function (s)
+                  (symbol:intern (string:append prefix
+                                                ":"
+                                                (symbol:name s)))))))
+      (list:each (function (symbol)
+                   (environment:set! env
+                                     (format symbol)
+                                     (hashmap:get ns symbol)))
+                 symbols)
+      ns)))
+
+(define hashmap:fold
+  (function (f value hashmap)
+    (array:fold (function (a bucket)
+                  (list:fold f a bucket))
+                value
+                (hashmap::data hashmap))))
+
+# (environment:here)
+# Return current environment.
+(define environment:here
+  (special () env env))
+
+# Execute body number of times.
+# Bind is bound to the current iteration number, starting with 0.
+(define dotimes
+  (special ((bind count) . body) env
+    (let ((count (evaluate count env))
+          (env (environment env)))
+      (ifs ((not (number? count))
+            (die "dotimes: count is not a number."))
+           ((not (symbol? bind))
+            (die "dotimes: bind is not a symbol."))
+           (true
+            (loop ((n 0)
+                   (value nil))
+              (if (< n count)
+                  (recurse (+ n 1)
+                           (evaluate-many body
+                                          (environment:set! env
+                                                            bind
+                                                            n)))
+                  value)))))))
+
+# (array:fold + 0 [1 2 3]) <=> (+ (+ (+ 1 0) 2) 3)
+(define array:fold
+  (function (f value array)
+    (let ((here (environment:here)))
+      (dotimes (n (array:length array))
+        (environment:set! here 'value (f value (array:get array n))))
+      value)))
+
+(define hashmap:keys
+  (function (hashmap)
+    (hashmap:fold (function (a (k . nil)) (pair k a))
+                  ()
+                  hashmap)))
+
+# (use namespace)
+# (use namespace prefix)
+(define use
+  (special (namespace . rest) env
+    (let ((namespace (evaluate namespace env)))
+      (evaluate (list:prepend import
+                              namespace
+                              (hashmap:keys namespace)
+                              rest)
+                env))))
+
+######################################################################
 
 # Evaluate forms in a sequence, and if any of them are truthy,
 # return it's value, or default to false.
@@ -450,27 +544,6 @@
 (define not
   (function (object)
     (== object false)))
-
-# Execute body number of times.
-# Bind is bound to the current iteration number, starting with 0.
-(define dotimes
-  (special ((bind count) . body) env
-    (let ((count (evaluate count env))
-          (env (environment env)))
-      (ifs ((not (number? count))
-            (die "dotimes: count is not a number."))
-           ((not (symbol? bind))
-            (die "dotimes: bind is not a symbol."))
-           (true
-            (loop ((n 0)
-                   (value nil))
-              (if (< n count)
-                  (recurse (+ n 1)
-                           (evaluate-many body
-                                          (environment:set! env
-                                                            bind
-                                                            n)))
-                  value)))))))
 
 # (* 1 2 3 4) => 24
 (define *
@@ -552,11 +625,6 @@
                     n
                     (array:get array n))))))
 
-# (environment:here)
-# Return current environment.
-(define environment:here
-  (special () env env))
-
 (define array:map!
   (function (f array)
     (dotimes (n (array:length array))
@@ -566,14 +634,6 @@
 (define array:map
   (function (f array)
     (array:map! f (array:copy array))))
-
-# (array:fold + 0 [1 2 3]) <=> (+ (+ (+ 1 0) 2) 3)
-(define array:fold
-  (function (f value array)
-    (let ((here (environment:here)))
-      (dotimes (n (array:length array))
-        (environment:set! here 'value (f value (array:get array n))))
-      value)))
 
 # Call function for each element of an array.
 (define array:each
@@ -625,13 +685,6 @@
                                      key)
                                     (hashmap:capacity hashmap)))
                  key))))
-
-(define hashmap:fold
-  (function (f value hashmap)
-    (array:fold (function (a bucket)
-                  (list:fold f a bucket))
-                value
-                (hashmap::data hashmap))))
 
 (define hashmap::copy-structure
   (function (hashmap)

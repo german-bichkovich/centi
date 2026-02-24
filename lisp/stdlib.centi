@@ -26,61 +26,6 @@
   (function (f h)
     (record 'hashmap (list:map f (r:get h 1)))))
 
-### Namespaces #######################################################
-
-# (export . binds)
-# (export list?) => ((list? . #<function list?>))
-# (export (my-list? list?)) => ((my-list? . #<function list?>))
-(define export
-  (special binds env
-    (list:map (function (spec)
-             (if* ((pair? spec)
-                   (pair (list:first spec) (evaluate (list:second spec) env)))
-                  ((symbol? spec)
-                   (pair spec (evaluate spec env)))
-                  (t
-                   (die "export: invalid spec"))))
-           binds)))
-
-# (import core.list)
-# (import core.list as l)
-# (import core.list include (nth head tail))
-# (import core.list exclude (nth head tail))
-# (import core.list as l include (nth head tail))
-# (import "list" as l exclude (nth head tail))
-(define import
-  (special (what . options) env
-    (let ((prefix
-           (p:get options 'as))
-          (transform
-           (if (== prefix nil)
-               identity
-               (function (name)
-                 (symbol:intern (string-append (symbol:name prefix)
-                                               "."
-                                               (symbol:name name))))))
-          (bindings
-           (if (string? what)
-               (load what)
-               (evaluate what env)))
-          (bindings
-           (let ((included (p:get options 'include false))
-                 (excluded (p:get options 'exclude false)))
-             (if* ((if included excluded false)
-                   (error "import: can't both include and exclude"))
-                  (included
-                   (list:filter (function ((k . v))
-                               (list:member? included k))
-                             bindings))
-                  (excluded
-                   (list:filter (function ((k . v))
-                               (not (list-member? included k)))
-                             bindings))
-                  (true bindings)))))
-      (list:each (function ((name . value))
-      (environment:set! env (transform name) value))
-              bindings))))
-
 ### Pattern matching #################################################
 
 # (defun identity (x) x) <=> (define identity (function (x) x)).
