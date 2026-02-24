@@ -1,19 +1,14 @@
-#!/bin/sh
+#!/bin/sh -e
 # Centi build script.
 
+# Start from CENTI_HOME
 cd "$(dirname $(realpath "$0"))/.."
+
+# Add $PWD to asdf load path
 export CL_SOURCE_REGISTRY="$PWD"
 
-findLisp(){
-	for i in "$LISP" sbcl ecl; do
-		if command -v "$i" /dev/null; then
-			echo "$i"
-			return
-		fi
-	done
-}
-
-exec $(findLisp) <<- EOF
+# Build
+exec sbcl --noinform <<- EOF
 	(require :asdf)
 	(asdf:disable-output-translations)
 	(asdf:load-system :centi)
