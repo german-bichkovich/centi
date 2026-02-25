@@ -943,3 +943,8 @@
 
 (define comment
   (special nil nil nil))
+
+(define average
+  (function numbers
+    (/ (apply + numbers)
+       (list:length numbers))))
