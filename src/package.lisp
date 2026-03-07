@@ -43,7 +43,6 @@
    :environment-get
    :environment-set!
    :environment-in?
-   :environment-empty?
    :environment-find
 
    ;; Records

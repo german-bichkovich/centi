@@ -1,8 +1,8 @@
 (in-package :centi)
 
 (defstruct (environment (:predicate environment?))
-  parent
-  bindings)
+  bindings
+  parent)
 
 (defmethod print-object ((object environment) stream)
   (print-unreadable-object (object stream :identity t :type t)))
@@ -24,12 +24,8 @@
     (declare (ignore value))
     present?))
 
-(defun environment-empty? (e)
-  "Check if environment is empty."
-  (eq e (intern "nil")))
-
 (defun environment-find (e binding)
-  (unless (environment-empty? e)
+  (when (environment? e)
     (if (environment-in? e binding)
         e
         (environment-find (environment-parent e) binding))))
