@@ -85,12 +85,3 @@
          (true false))) # TODO call generic = function
   (list:fold equal? o os))
 
-# (compose . functions)
-# (compose print -) <=> (function (x) (print (- x)))
-# TODO import list lib
-(define compose
-  (function fs
-    (function (x)
-      (list:fold-right (function (acc elt) (elt acc))
-                       x
-                       fs))))
