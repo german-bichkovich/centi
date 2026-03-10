@@ -75,7 +75,7 @@
 # Check objects' structural equality.
 (defun = (o . os)
   (defun equal? (o1 o2)
-    (if* ((== o1 o2) true)
+    (ifs ((== o1 o2) true)
          ((pair? o1)
           (if (pair? o2)
               (if (equal? (list:head o1) (list:head o2))
