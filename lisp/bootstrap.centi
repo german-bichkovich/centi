@@ -34,7 +34,10 @@
 (:define () '())
 
 (:define pair:head
-  (wrap (special ((head . nil)) nil head)))
+  (wrap (special (pair) nil
+          (if (pair? pair)
+              ((wrap (special ((head . nil)) env head)) pair)
+              nil))))
 
 # (apply pair '(1 2)) <=> (pair '1 '2)
 (:define apply
