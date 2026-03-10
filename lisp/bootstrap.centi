@@ -1,4 +1,4 @@
-# -*- mode: lisp -*-
+# -*- mode: scheme -*-
 # Bootstrap sequence for centi.
 # All of required builtins are marked as such in builtins.lisp.
 
