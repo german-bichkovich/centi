@@ -43,12 +43,6 @@ that forces evaluation of its arguments."
           "#<function ~a>"
           (special-ptree (unwrap object))))
 
-(defun generic? (object)
-  "Check of object is a generic function."
-  (and (record? object)
-       (eq (record-get object 0)
-           (intern "generic"))))
-
 (defmacro function (parameters &rest body)
   `(wrap (special ,parameters ignore . ,body)))
 

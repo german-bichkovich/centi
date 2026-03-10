@@ -54,9 +54,5 @@
          (apply (unwrap form)
                 (mapcar (lambda (form) (eval form env)) args)
                 env))
-        ((generic? form)
-         (apply (eval (intern "generic:call") env)
-                (cons form args)
-                env))
         (t
          (error "capply: can't apply ~a" form))))
