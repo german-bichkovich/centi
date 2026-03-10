@@ -907,3 +907,8 @@
 (define-function box:update! (box f)
   (box! box (f (unbox box))))
 
+(define-function 1+ (x)
+  (+ x 1))
+
+(define-function 1- (x)
+  (- x 1))
