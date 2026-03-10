@@ -41,9 +41,11 @@
 
 # (apply pair '(1 2)) <=> (pair '1 '2)
 (:define apply
-  (wrap (special (f args) env
-          (evaluate (pair (unwrap f) args)
-                    env))))
+  (wrap (special (f argument-list) env
+          (if (function? f)
+              (evaluate (pair (unwrap f) argument-list)
+                        env)
+              (die "apply: not a function")))))
 
 # (list:prepend 'x) <=> 'x
 # (list:prepend 'x 'y) <=> (pair 'x 'y)
