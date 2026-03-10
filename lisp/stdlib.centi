@@ -85,3 +85,26 @@
          (true false))) # TODO call generic = function
   (list:fold equal? o os))
 
+# TODO make into a generic
+(define equal?
+  (function (object-1 object-2)
+    (ifs ((== object-1 object-2)
+          true)
+         ((pair? object-1)
+          (if (pair? object-2)
+              (if (equal? (pair:head object-1)
+                          (pair:head object-2))
+                  (equal? (pair:tail object-1)
+                          (pair:tail object-2))
+                  false)
+            false))
+         (true false))))
+
+(define =
+  (function (o . os)
+    (loop ((os os))
+      (if (pair? os)
+          (if (equal? o (pair:head os))
+              (recurse (pair:tail os))
+              false)
+          true))))
