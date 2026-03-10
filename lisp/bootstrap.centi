@@ -899,6 +899,13 @@
   (function arguments
     (apply f (list:append initial-arguments
                           arguments))))
+(define-function list:every? (predicate list)
+  (if (pair? list)
+      (if (predicate (pair:head list))
+          (list:every? predicate (pair:tail list))
+          false)
+      true))
+
 (define-record-type box
   box
   box?
