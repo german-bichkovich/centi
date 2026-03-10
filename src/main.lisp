@@ -18,7 +18,7 @@
 
 (defun load-stdlib ()
   (let ((home (uiop:getenv "CENTI_HOME"))
-        (files '("bootstrap" "stdlib")))
+        (files '("bootstrap" "stdlib" "peval")))
     (dolist (file files)
       (load (format nil "~a/lisp/~a.centi" home file)))))
 

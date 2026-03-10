@@ -315,6 +315,13 @@
   (function (env symbol value)
     (environment-set! env symbol value)))
 
+;; (environment:find environment symbol)
+;; Find an environment in which symbol is bound.
+(define "environment:find"
+  (function (env symbol)
+    (let ((e (environment-find env symbol)))
+      (or e (intern "false")))))
+
 ;; (write-byte byte)
 ;; Write a byte to standard output.
 (define "write-byte"
@@ -356,11 +363,31 @@
   (function (message)
     (error "~a" message)))
 
+(define "special::ebind"
+  (function (special)
+    (assert (special? special))
+    (special-ebind special)))
+
+(define "special::body"
+  (function (special)
+    (assert (special? special))
+    (special-body special)))
+
+(define "special::ptree"
+  (function (special)
+    (assert (special? special))
+    (special-ptree special)))
+
+(define "special::environment"
+  (function (special)
+    (assert (special? special))
+    (special-environment special)))
 
 (define "special::metadata"
   (function (special)
     (assert (special? special))
     (special-metadata special)))
+
 ;;; Globals ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ;; Default truth value.

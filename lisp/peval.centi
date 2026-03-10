@@ -1,27 +1,7 @@
-###
-### Partial evaluator
-###
-
-(print "peval")
-
-# (print (test a))
-# # =>
-# (print ((macro (x) (list quote x)) a))
-# # =>
-# (print ((special (x) env (eval (list quote x) env)) a))
-# # =>
-# (print (quote a))
-
-(define metadata
-    '((+
-       (special? . false)
-       (ptree . args))))
-
-(defun add2 (x)
-  (+ 1 x 1))
-# => (initial optimization)
-(defun add2 (x)
-  (+ 2 x))
+# -*- mode: scheme -*-
+### Partial evaluator ################################################
+# https://arxiv.org/pdf/2303.12254
+# https://fexpr.blogspot.com/2013/07/explicit-evaluation.html
 
 # Builtins have special partial evaluation rules
 # Go into the function bodies recursively
@@ -31,45 +11,155 @@
 # ? if constant, inline
 # ? track if symbols are overridden?
 
-(defun peval (form)
-  (cond ((pair? form)
-         (let ((fn (head form))
-               (args (if true # TODO if normal fn
-                         (list-map peval (tail form))
-                         (tail form))))
-           (cond ((== fn '+)
-                  (peval/+ args 0 ()))
-                 (t
-                  (die "peval: idk")))))
-        (t form)))
+(define peval-special-cases
+  {+ (function (args env)
+       (let ((static (apply + (list:filter number? args)))
+             (dynamic (list:filter (compose not number?) args)))
+         (if (pair? dynamic)
+             (list:prepend '+ static dynamic)
+             static)))
+   quote (function ((arg) env)
+           (if (or (pair? arg)
+                   (symbol? arg))
+               (list 'quote arg)
+               arg))
+   do (function (args env)
+        (if (pair? (pair:tail args))
+            (pair 'do args)
+            (peval (pair:head args) env)))})
 
-(defun peval/+ (args result unknowns)
-  (if (pair? args)
-      (let ((arg (head args)))
-        (cond ((number? arg)
-               (peval/+ (tail args)
-                        (+ result arg)
-                        unknowns))
-              ((pair? arg)
-               (let ((value (peval arg)))
-                 (if (number? value)
-                     (peval/+ (tail args)
-                              (+ result value)
-                              unknowns)
-                     (peval/+ (tail args)
-                              result
-                              (pair value unknowns)))))
-              ((symbol? arg)
-               (peval/+ (tail args)
-                        result
-                        (pair arg unknowns)))))
-      (pair '+ (pair result (list-reverse unknowns)))))
+(define-function peval-arguments (args environment)
+  (list:map (function (arg) (peval arg environment)) args))
 
-(peval/+ '(1 x 1 y) 0 ())
+# TODO
+# Inlining
+# Applying pure functions if form is complete (every argument is
+#                                                    evaluated)
+(define-function peval (form environment)
+  (ifs ((symbol? form)
+        (let ((e (environment:find environment form)))
+          (if e
+              (peval (list quote (evaluate form e))
+                     environment)
+              form)))
+       ((pair? form)
+        (let (((f . args) form)
+              (f (peval f environment)))
+          (ifs ((function? f)
+                (ifs ((hashmap:get peval-special-cases f false)
+                      ((hashmap:get peval-special-cases f)
+                       (peval-arguments args environment)
+                       environment))
+                     (true
+                      (pair f (peval-arguments args environment)))))
+               ((special? f)
+                (ifs ((hashmap:get peval-special-cases f false)
+                      ((hashmap:get peval-special-cases f)
+                       args
+                       environment))
+                     (true form)))
+               (true
+                (pair f (peval-arguments args environment))))))
+       (true form)))
 
-(defun test (x)
-  (+ (add2 5) x))
+(let ((f function)
+      (args '((x) x)))
+  (peval (pair 'do (special::body f))
+         (let ((e (environment (special::environment f))))
+           (destructure (special::ptree f)
+                        args
+                        (function (k v) (environment:set! e k v)))
+           e)))
+
+(define declare comment)
+
+# (define hashmap:get
+#   (function (hashmap key . rest)
+#     (declare name hashmap:get
+#              pure true
+#              documentation "(hashmap:get hashmap key)
+#                             (hashmap:get hashmap key default)
+# 
+#                             Get a key from hashmap. If key does not
+#                             exist, first form returns nil, second form
+#                             returns default.")
+#     (let ((index (modulo ((hashmap:hash-function hashmap) key)
+#                          (hashmap:capacity hashmap)))
+#           (bucket (array:get (hashmap::data hashmap) index))
+#           (entry (alist:find bucket key)))
+#       (if (pair? entry)
+#           (pair:tail entry)
+#           (pair:head rest)))))
+
+# (function:meta! list '((name . list)
+#                        (inline . true)
+#                        (pure . true)
+#                        (type . (Function Any Any))
+#                        (signiture . "(& args)")
+#                        (documentation "Return a freshly allocated list of all given arguments")))
+# 
+# (meta:add! list 'name 'list)
+# (meta:add! list 'inline true)
+# (meta:add! list 'pure true)
+
+(define Peval
+  (special (form) env
+    (peval form env)))
+
+# TODO declare for specials and functions.
+#      default keywords - name, pure, inline, type, documentation.
+#      if documentation starts with (, then everything until newline
+#      is display for signiture, one per line, otherwise ptree is used
+# TODO force wrap only to work on specials? merge special and function
+#      structure to make it easier to get parts?
+# TODO declaim
+# TODO make environments append-only, inline values?
+# TODO metadata on functions using alists
+# TODO at definition time, add metadata to function if its inlinable?
+# TODO add name of the function to its definition when possible
+# TODO inline special, just for partial evaluator
+# TODO make below code work
+
+# (comment
+# 
+#   (:define function
+#     (special (ptree . body) env
+#       (evaluate (list wrap
+#                       (list:prepend special ptree nil body))
+#                 env)))
+# 
+#   (function (x) x)
+# 
+#   =>
+# 
+#   (#(special (ptree . body) env
+#       (evaluate (list wrap
+#                       (list:prepend special ptree nil body))
+#                 env))
+#   (x)
+#   x)
+# 
+#   =>
+#   
+#   (#(special () env
+#       (evaluate (list wrap
+#                       (list:prepend special '(x) nil '(x)))
+#                 env)))
+# 
+#   =>
+# 
+#   (#(special () env
+#       (evaluate '(wrap (#<special> (x) nil x)) env)))
+# 
+#   =>
+#   
+#   (#wrap (#special (x) nil x))
+# 
+#   )
+
+## (expand-inline '(not-number? x)
+#                'not-number?
+#                (function (x) (not (number? x))))
 # =>
-(defun test (x)
-  (+ 7 x))
-
+# TODO environments, inlined values?
+# (not (number? x))
