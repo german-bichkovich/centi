@@ -106,8 +106,9 @@
   (special (ptree ebind . body) env
     (special-new :ebind ebind
                  :ptree ptree
-                 :body body
-                 :environment env)))
+                 :body (special-remove-declaration body)
+                 :environment env
+                 :metadata (special-extract-metadata body))))
 
 ;; (unwrap function)
 ;; Return a special form with same body as one function has.
@@ -355,6 +356,11 @@
   (function (message)
     (error "~a" message)))
 
+
+(define "special::metadata"
+  (function (special)
+    (assert (special? special))
+    (special-metadata special)))
 ;;; Globals ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ;; Default truth value.

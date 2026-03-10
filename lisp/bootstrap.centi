@@ -16,7 +16,10 @@
 (:define print :print)
 
 (:define quote
-  (special (form) nil form))
+  (special (form) nil
+    (declare pure true
+             documentation "Return unevaluated object as is.")
+    form))
 
 # Default truth value.
 (:define true 'true)

@@ -7,7 +7,8 @@ it doesn't evaluate it's arguments."
   body
   environment
   ptree
-  ebind)
+  ebind
+  metadata)
 
 (defmethod print-object ((object special) stream)
   (format stream "#<special ~a>" (special-ptree object)))
@@ -51,3 +52,28 @@ that forces evaluation of its arguments."
 (defmacro function (parameters &rest body)
   `(wrap (special ,parameters ignore . ,body)))
 
+;;; Declarations ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun has-declarations? (body)
+  (and (consp (car body))
+       (eq (caar body) (intern "declare"))))
+
+(defun special-remove-declaration (body)
+  (if (has-declarations? body) (cdr body) body))
+
+;; TODO remove unneeded spaces, insert ptree if not provided
+(defun normalize-docstring (string)
+  string)
+
+(defun special-extract-metadata (body)
+  (if (has-declarations? body)
+      (loop
+        with binds = (cdar body)
+        while binds
+        for k = (pop binds)
+        for v = (pop binds)
+        collect (cond ((eq k (intern "documentation"))
+                       (cons k (normalize-docstring v)))
+                      (t
+                       (cons k v))))
+      ()))
