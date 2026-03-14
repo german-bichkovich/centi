@@ -341,6 +341,7 @@ applies to the first word of heap space:
 - find a good hash function
 - implement a profiler
 - look into algebraic effects
+- Make compiler do type inference to reduce type checks at runtime
 
 #+begin_src elisp
   (progn
