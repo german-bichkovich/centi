@@ -1,0 +1,36 @@
+(define-record-type result
+  result
+  result?
+  (ok? ok? nil)
+  (data data nil))
+
+(define ok
+  (curry result true))
+
+(define error
+  (curry result false))
+
+(define error?
+  (compose not ok?))
+
+(define >>=
+  (function (value . forms)
+    (loop ((fs forms)
+           (value value))
+      (ifs ((ok? value)
+            (if (pair? fs)
+                (recurse (pair:tail fs)
+                         ((pair:head fs) (data value)))
+                value))
+           ((error? value)
+            value)
+           (true
+            (die ">>=: not a result type."))))))
+
+(export result?
+        data
+        ok
+        ok?
+        error
+        error?
+        >>=)
