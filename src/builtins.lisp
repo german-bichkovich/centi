@@ -419,6 +419,11 @@
       (assert (special? special))
       (special-metadata special))))
 
+;; (load file-spec)
+(define "load"
+  (function args
+    (load (car args))))
+
 ;;; Globals ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ;; Default truth value.
