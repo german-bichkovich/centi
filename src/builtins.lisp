@@ -27,6 +27,9 @@
           (destructuring-bind (form &optional (env env)) args
             (eval form env)))))
 
+(setf (special-metadata (unwrap (eval (intern "evaluate") *stdenv*)))
+      (read-string "((name . evaluate))"))
+
 ;; (if 'test 'then 'else)
 ;; If test is true, evaluate then form, otherwise evaluate else form.
 (define "if"
@@ -114,6 +117,11 @@
                    :environment env
                    :metadata (special-extract-metadata body)))))
 
+(setf (special-metadata (eval (intern "special")
+                              *stdenv*))
+      (read-string "((name . special)
+                     (pure . true))"))
+
 ;; (unwrap function)
 ;; Return a special form with same body as one function has.
 (define "unwrap"
@@ -125,6 +133,9 @@
 (define "wrap"
   (function args
     (wrap (car args))))
+
+(setf (special-metadata (unwrap (eval (intern "wrap") *stdenv*)))
+      (read-string "((name . wrap) (pure . true))"))
 
 ;; (number? object)
 ;; Check if object is a number.
