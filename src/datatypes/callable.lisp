@@ -11,22 +11,11 @@ it doesn't evaluate it's arguments."
   metadata)
 
 (defmethod print-object ((object special) stream)
-  (format stream "#<special ~a>" (special-ptree object)))
-
-(defmacro special (ptree ebind &rest body)
-  (let ((ptree (or ptree (intern "()")))
-        (ebind-symbol (or ebind (gensym "EBIND-"))))
-    `(special-new
-      :ebind 'env
-      :ptree ',ptree
-      :environment 'nil
-      :body (lambda (args ,ebind-symbol)
-              (declare (ignorable args ,ebind-symbol))
-              ,(if (symbolp ptree)
-                   `(let ((,ptree args))
-                      ,@body)
-                   `(destructuring-bind ,ptree args
-                      ,@body))))))
+  (let* ((metadata (special-metadata object))
+         (entry (assoc (intern "name") metadata)))
+    (if (consp entry)
+        (format stream "#<special ~a>" (cdr entry))
+        (format stream "#<special>"))))
 
 (defstruct (function
             (:constructor wrap (special))
@@ -39,12 +28,12 @@ that forces evaluation of its arguments."
   (function-special f))
 
 (defmethod print-object ((object function) stream)
-  (format stream
-          "#<function ~a>"
-          (special-ptree (unwrap object))))
-
-(defmacro function (parameters &rest body)
-  `(wrap (special ,parameters ignore . ,body)))
+  (let* ((object (unwrap object))
+         (metadata (special-metadata object))
+         (entry (assoc (intern "name") metadata)))
+    (if (consp entry)
+        (format stream "#<function ~a>" (cdr entry))
+        (format stream "#<function>"))))
 
 ;;; Declarations ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
