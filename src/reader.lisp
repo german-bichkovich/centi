@@ -10,7 +10,8 @@
 ;; #read-hex a8b9
 ;; #read-octal 361100
 ;; #read-binary 1010101010
-(defun read (&key (stream *standard-input*) eof-marker)
+(defun read (&key (stream *standard-input*)
+                  (eof-marker 'EOF))
   (labels ((make-buffer ()
              (make-array 0 :fill-pointer 0
                            :adjustable t
