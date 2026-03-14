@@ -15,18 +15,20 @@
 
 (defun load (path &optional in-stdenv?)
   (with-open-file (s (resolve-filepath path))
-    (loop for form = (read :stream s)
+    (loop with env = (if in-stdenv?
+                         *stdenv*
+                         (environment *stdenv*))
+          for form = (read :stream s)
           until (member form (list 'EOF (intern "nil")))
-          for value = (eval form (if in-stdenv?
-                                     *stdenv*
-                                     (environment *stdenv*)))
+          for value = (eval form env)
           finally (return value))))
 
 (defun repl ()
   (loop
+    with environment = (environment *stdenv*)
     for form = (read :stream nil)
     until (member form (list 'EOF (intern "nil")))
-    do (eval (list (intern "print") form) *stdenv*)
+    do (eval (list (intern "print") form) environment)
        (terpri)))
 
 (defun load-stdlib ()
