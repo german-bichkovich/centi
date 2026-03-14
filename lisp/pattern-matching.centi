@@ -1,0 +1,34 @@
+# -*- mode: scheme -*-
+
+(defun :matches? (ptree form)
+  (ifs ((== ptree ())
+        (== form ()))
+       ((symbol? ptree)
+        true)
+       ((pair? ptree)
+        (and (pair? form)
+             (:matches? (head ptree) (head form))
+             (:matches? (tail ptree) (tail form))))
+       (true false)))
+
+(define match
+  (special (form . clauses) env
+    (defun helper (((pattern . body) . clauses) value)
+      (if (:matches? pattern value)
+          (evaluate (list:prepend let
+                                  (list (list pattern (list quote value)))
+                                  body)
+                env)
+          (if (pair? clauses)
+              (helper clauses value)
+              nil)))
+    (helper clauses (evaluate form env))))
+
+(define match-fn
+  (special clauses env
+    (let ((body
+           (list:prepend match
+                         'args
+                         (list:append clauses
+                                      '((_ (die "match-fn: invalid arity")))))))
+      (evaluate (list:list function 'args body) env))))
