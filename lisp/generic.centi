@@ -143,3 +143,27 @@
                          (l:tail pair))
                         (true
                          (die "get!: invalid spec")))))
+
+### equal? ###########################################################
+
+(define equal?
+  (generic (function (object1 object2)
+             (ancestor-list object1))))
+
+(generic:method! equal?
+                 'pair
+                 (function (o1 o2)
+                   (and (pair? o2)
+                        (equal? (head o1) (head o2))
+                        (equal? (tail o1) (tail o2)))))
+
+(generic:method! equal? 'object ==)
+
+(define =
+  (function (o . os)
+    (loop ((os os))
+      (if (pair? os)
+          (if (equal? o (head os))
+              (recur (tail os))
+              false)
+          true))))
