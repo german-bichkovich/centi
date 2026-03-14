@@ -2,6 +2,8 @@
 ### Partial evaluator ################################################
 # https://arxiv.org/pdf/2303.12254
 # https://fexpr.blogspot.com/2013/07/explicit-evaluation.html
+# https://en.wikipedia.org/wiki/Side_effect_(computer_science)
+# https://quasarbright.github.io/blog/2023/10/understanding-and-implementing-pattern-matching.html
 
 # Builtins have special partial evaluation rules
 # Go into the function bodies recursively
@@ -11,155 +13,145 @@
 # ? if constant, inline
 # ? track if symbols are overridden?
 
-(define peval-special-cases
-  {+ (function (args env)
-       (let ((static (apply + (list:filter number? args)))
-             (dynamic (list:filter (compose not number?) args)))
-         (if (pair? dynamic)
-             (list:prepend '+ static dynamic)
-             static)))
-   quote (function ((arg) env)
-           (if (or (pair? arg)
-                   (symbol? arg))
-               (list 'quote arg)
-               arg))
-   do (function (args env)
-        (if (pair? (pair:tail args))
-            (pair 'do args)
-            (peval (pair:head args) env)))})
+(define-function pure? (object)
+  (and (special? object)
+       (pair? (alist:find (special::metadata object)
+                          'pure))))
 
-(define-function peval-arguments (args environment)
-  (list:map (function (arg) (peval arg environment)) args))
-
-# TODO
-# Inlining
-# Applying pure functions if form is complete (every argument is
-#                                                    evaluated)
-(define-function peval (form environment)
+(define-function self-evaluating? (form)
   (ifs ((symbol? form)
-        (let ((e (environment:find environment form)))
+        (list:in? '(true false nil ()) form))
+       ((pair? form)
+        (list:in? (list quote 'quote) (pair:head form)))
+       (true true)))
+
+(define peval-special-cases
+  # TODO remove special case?
+  {do (function (args env)
+        (if (pair? (pair:tail args))
+            (pair 'do
+                  (list:map (function (form) (peval form env))
+                            args))
+            (peval (pair:head args) env)))
+   # + (function (args env)
+   #     (let ((static (apply + (list:filter number? args)))
+   #           (dynamic (list:filter (compose not number?) args)))
+   #       (if (pair? dynamic)
+   #           (list:prepend '+ static dynamic)
+   #           static)))
+   })
+
+(define-function form->data (value)
+  (if (self-evaluating? value)
+      value
+      (list quote value)))
+
+# TODO always copy non-atomic literals? they may get mutated later
+# TODO partial environment just doesnt have forms in it
+#      pass only static arguments when pevaling functions
+(define-function peval-special-application (f args env)
+  (ifs ((hashmap:get peval-special-cases f false)
+        ((hashmap:get peval-special-cases f) args env))
+       # TODO what if partial environment? is there such a thing?
+       ((special:pure? f)
+        (form->data (evaluate (pair f args) env)))
+       ((pair? (special::body f))
+        (let ((inner (environment (special::environment f)))
+              (ebind (special::ebind f))
+              (bind! (partial environment:set! inner))
+              (nil (when-not (== ebind nil) (bind! ebind env)))
+              (nil (destructure (special::ptree f) args bind!))
+              (body (list:map (function (form) (peval form inner))
+                              (special::body f)))
+               # TODO (special () env (evaluate form env)) => form
+               (inlinable? (list:every? self-evaluating? body)))
+           (if inlinable?
+               (if (pair? (pair:tail body))
+                   (pair do body)
+                   (pair:head body))
+               (list (special:new {'ptree ()
+                                   'ebind (special::ebind f)
+                                   'body body
+                                   'env (special::environment f)
+                                   'meta (special::metadata f)})))))
+       (true
+        (pair f args))))
+
+(define-function peval (form env)
+  (ifs ((symbol? form)
+        (let ((e (environment:find env form)))
           (if e
-              (peval (list quote (evaluate form e))
-                     environment)
+              (form->data (evaluate form e))
               form)))
        ((pair? form)
         (let (((f . args) form)
-              (f (peval f environment)))
-          (ifs ((function? f)
-                (ifs ((hashmap:get peval-special-cases f false)
-                      ((hashmap:get peval-special-cases f)
-                       (peval-arguments args environment)
-                       environment))
-                     (true
-                      (pair f (peval-arguments args environment)))))
-               ((special? f)
-                (ifs ((hashmap:get peval-special-cases f false)
-                      ((hashmap:get peval-special-cases f)
-                       args
-                       environment))
-                     (true form)))
+              (f (peval f env)))
+          (ifs ((special? f)
+                (peval-special-application f args env))
+               ((function? f)
+                (let ((args (list:map (function (arg) (peval arg env))
+                                      args)))
+                  (if (list:every? self-evaluating? args)
+                      (peval (pair (unwrap f)
+                                   (list:map evaluate args))
+                             env)
+                      # TODO inlining
+                      (pair f args))))
                (true
-                (pair f (peval-arguments args environment))))))
+                (pair f args)))))
        (true form)))
-
-(let ((f function)
-      (args '((x) x)))
-  (peval (pair 'do (special::body f))
-         (let ((e (environment (special::environment f))))
-           (destructure (special::ptree f)
-                        args
-                        (function (k v) (environment:set! e k v)))
-           e)))
-
-(define declare comment)
-
-# (define hashmap:get
-#   (function (hashmap key . rest)
-#     (declare name hashmap:get
-#              pure true
-#              documentation "(hashmap:get hashmap key)
-#                             (hashmap:get hashmap key default)
-# 
-#                             Get a key from hashmap. If key does not
-#                             exist, first form returns nil, second form
-#                             returns default.")
-#     (let ((index (modulo ((hashmap:hash-function hashmap) key)
-#                          (hashmap:capacity hashmap)))
-#           (bucket (array:get (hashmap::data hashmap) index))
-#           (entry (alist:find bucket key)))
-#       (if (pair? entry)
-#           (pair:tail entry)
-#           (pair:head rest)))))
-
-# (function:meta! list '((name . list)
-#                        (inline . true)
-#                        (pure . true)
-#                        (type . (Function Any Any))
-#                        (signiture . "(& args)")
-#                        (documentation "Return a freshly allocated list of all given arguments")))
-# 
-# (meta:add! list 'name 'list)
-# (meta:add! list 'inline true)
-# (meta:add! list 'pure true)
 
 (define Peval
   (special (form) env
     (peval form env)))
 
-# TODO declare for specials and functions.
-#      default keywords - name, pure, inline, type, documentation.
-#      if documentation starts with (, then everything until newline
-#      is display for signiture, one per line, otherwise ptree is used
+# (Peval (quote x))
+# (Peval ((special (form) nil form) 5))
+# (Peval (special (form) nil form))
+
+# TODO removing metadata (name) between wrapped/unwrapped functions?
 # TODO force wrap only to work on specials? merge special and function
 #      structure to make it easier to get parts?
 # TODO declaim
-# TODO make environments append-only, inline values?
-# TODO metadata on functions using alists
+# TODO make environments append-only? peval assumes that already
 # TODO at definition time, add metadata to function if its inlinable?
 # TODO add name of the function to its definition when possible
 # TODO inline special, just for partial evaluator
 # TODO make below code work
 
-# (comment
-# 
-#   (:define function
-#     (special (ptree . body) env
-#       (evaluate (list wrap
-#                       (list:prepend special ptree nil body))
-#                 env)))
-# 
-#   (function (x) x)
-# 
-#   =>
-# 
-#   (#(special (ptree . body) env
-#       (evaluate (list wrap
-#                       (list:prepend special ptree nil body))
-#                 env))
-#   (x)
-#   x)
-# 
-#   =>
-#   
-#   (#(special () env
-#       (evaluate (list wrap
-#                       (list:prepend special '(x) nil '(x)))
-#                 env)))
-# 
-#   =>
-# 
-#   (#(special () env
-#       (evaluate '(wrap (#<special> (x) nil x)) env)))
-# 
-#   =>
-#   
-#   (#wrap (#special (x) nil x))
-# 
-#   )
+# (function (x) x)
+# (Peval (function (x) x))
 
-## (expand-inline '(not-number? x)
-#                'not-number?
-#                (function (x) (not (number? x))))
-# =>
-# TODO environments, inlined values?
-# (not (number? x))
+# # Definiton
+# (:define function
+#   (special (ptree . body) env
+#     (evaluate (list wrap
+#                     (list:prepend special ptree nil body))
+#               env)))
+# 
+# (function (x) x)
+# 
+# # =>
+# 
+# ($(special (ptree . body) env
+#     (evaluate (list wrap
+#                     (list:prepend special ptree nil body))
+#               env))
+# (x)
+# x)
+# 
+# # =>
+# 
+# ($(special () env
+#     (evaluate (list wrap
+#                     (list:prepend special '(x) nil '(x)))
+#               env)))
+# 
+# # =>
+# 
+# ($(special () env
+#     (evaluate '(<wrap> (<special> (x) nil x)) env)))
+# 
+# # =>
+# 
+# (<wrap> (<special> (x) nil x))
