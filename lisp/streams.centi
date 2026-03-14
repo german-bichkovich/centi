@@ -1,0 +1,51 @@
+# -*- scheme -*-
+
+(define-record-type stream
+  :new
+  stream?
+  (:head :head :head!)
+  (:tail :tail :tail!)
+  (:bitmap :bitmap :bitmap!))
+
+(define pair
+  (special (head tail) env
+    (:new (function () (evaluate head env))
+          (function () (evaluate tail env))
+          0)))
+
+(define head
+  (function (stream)
+    (when (== 0 (bit-and (:bitmap stream) 1))
+      (:head! stream ((:head stream)))
+      (:bitmap! stream (bit-or (:bitmap stream) 1)))
+    (:head stream)))
+
+(define tail
+  (function (stream)
+    (when (== 0 (bit-and (:bitmap stream) 2))
+      (:tail! stream ((:tail stream)))
+      (:bitmap! stream (bit-or (:bitmap stream) 2)))
+    (:tail stream)))
+
+(define map
+  (function (f list)
+    (pair (f (head list))
+          (map f (tail list)))))
+
+(define range
+  (function (from to step)
+    (if (> from to)
+        from
+	(pair from
+              (range (+ from step) to step)))))
+
+# (define c
+#   (map (function (x) (exponent x 3))
+#        (range 0 10 1)))
+
+# (head c)
+# (head (tail c))
+# (head (tail (tail c)))
+# (head (tail (tail (tail c)))
+# (head (tail (tail (tail (tail c)))))
+# (head (tail (tail (tail (tail (tail c))))))
