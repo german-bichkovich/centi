@@ -500,7 +500,7 @@ Return an absolute value of a number.")
 
 (:define alist:get
   (function (alist key . rest)
-    (let ((x (find alist key)))
+    (let ((x (alist:find alist key)))
       (if (pair? x)
           (tail x)
           (head rest)))))
@@ -574,7 +574,7 @@ first form will return nil, second - default.")
     (if (pair? spec)
         spec
         (if (string? spec)
-            (load string)
+            (load spec)
             (die "resolve-namespace: bad specifier")))))
 
 (define export
