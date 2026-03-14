@@ -360,6 +360,11 @@
       (let ((e (environment-find env symbol)))
         (or e (intern "false"))))))
 
+;; (environment::parent environment)
+(define "environment::parent"
+  (function args
+    (environment-parent (car args))))
+
 ;; (write-byte byte)
 ;; Write a byte to standard output.
 (define "write-byte"
