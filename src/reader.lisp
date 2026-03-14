@@ -31,8 +31,10 @@
                (cond ((whitespace? c)
                       (next))
                      ((eq c #\#)
-                      (if (eq (next) #\;)
-                          (read1 depth)
+                      (next)
+                      (if (eq (peek) #\;)
+                          (progn (next)
+                                 (read1 depth))
                           (loop until (member (next)
                                               '(nil #\newline)))))
                      (t
