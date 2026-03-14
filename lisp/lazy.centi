@@ -1,0 +1,25 @@
+# -*- scheme -*-
+# A simple implementation of laziness.
+
+(define-record-type lazy-object
+  :new
+  delayed?
+  (:value :value :value!)
+  (:forced? forced? :forced!))
+
+(define delay
+  (special (object) env
+    (:new (function () (evaluate object env))
+          false)))
+
+(define force
+  (function (lazy-object)
+    (when-not (forced? lazy-object)
+      (:forced! lazy-object true)
+      (:value! lazy-object ((:value lazy-object))))
+    (:value lazy-object)))
+
+(export delay
+        force
+        delayed?
+        forced?)
