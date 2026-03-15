@@ -66,7 +66,7 @@ use the dynamic environment.
 
 ### Lists 1 ##########################################################
 
-(:define list
+(:define list:list
   (function args
     (declare name list
              documentation "(list . args)
@@ -76,7 +76,9 @@ use the dynamic environment.
 Allocate a new list of arguments.")
     args))
 
-(:define head
+(:define list list:list)
+
+(:define list:head
   (function (list)
     (declare name head
              documentation "(head list)
@@ -86,7 +88,9 @@ Allocate a new list of arguments.")
         ((function ((head . nil)) head) list)
 	nil)))
 
-(:define tail
+(:define head list:head)
+
+(:define list:tail
   (function (list)
     (declare name tail
              documentation "(tail list)
@@ -95,6 +99,8 @@ Allocate a new list of arguments.")
     (if (pair? list)
         ((function ((nil . tail)) tail) list)
 	nil)))
+
+(:define tail list:tail)
 
 (:define list:first head)
 
