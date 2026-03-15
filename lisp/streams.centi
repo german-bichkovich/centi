@@ -28,14 +28,60 @@
     (:tail stream)))
 
 (define map
-  (function (f list)
-    (pair (f (head list))
-          (map f (tail list)))))
+  (function (f stream)
+    (if (stream? stream)
+        (pair (f (head stream))
+              (map f (tail stream)))
+        null)))
+
+(define filter
+  (function (f stream)
+    (if (stream? stream)
+        (if (f (head stream))
+            (pair (head stream)
+                  (filter f (tail stream)))
+            (filter f (tail stream)))
+        ())))
+
+(define fold
+  (function (f value stream)
+    (if (stream? stream)
+        (fold f
+              (f value (head stream))
+              (tail stream))
+        value)))
+
+(define take
+  (function (stream n)
+    (if (stream? stream)
+        (if (== n 0)
+            ()
+            (pair (head stream)
+                  (take (tail stream) (- n 1))))
+        ())))
+
+(define drop
+  (function (stream n)
+    (if (stream? stream)
+        (if (== n 0)
+            stream
+            (drop (tail stream) (- n 1)))
+        ())))
+
+(define nth
+  (function (stream n . rest)
+    (if (stream? stream)
+        (if (== n 0)
+            (head stream)
+            (nth (tail stream)
+                 (- n 1)
+                 (list:head stream)))
+        (list:head stream))))
 
 (define range
   (function (from to step)
     (if (> from to)
-        from
+        ()
 	(pair from
               (range (+ from step) to step)))))
 
@@ -49,3 +95,15 @@
 # (head (tail (tail (tail c)))
 # (head (tail (tail (tail (tail c)))))
 # (head (tail (tail (tail (tail (tail c))))))
+
+(export stream?
+        pair
+        head
+        tail
+        map
+        filter
+        fold
+        take
+        drop
+        nth
+        range)
