@@ -5,7 +5,7 @@
   stream?
   (:head :head :head!)
   (:tail :tail :tail!)
-  (:bitmap :bitmap :bitmap!))
+  (:state :state :state!))
 
 (define pair
   (special (head tail) env
@@ -15,16 +15,16 @@
 
 (define head
   (function (stream)
-    (when (== 0 (bit-and (:bitmap stream) 1))
+    (when (== 0 (bitwise-and (:state stream) 1))
       (:head! stream ((:head stream)))
-      (:bitmap! stream (bit-or (:bitmap stream) 1)))
+      (:state! stream (bitwise-or (:state stream) 1)))
     (:head stream)))
 
 (define tail
   (function (stream)
-    (when (== 0 (bit-and (:bitmap stream) 2))
+    (when (== 0 (bitwise-and (:state stream) 2))
       (:tail! stream ((:tail stream)))
-      (:bitmap! stream (bit-or (:bitmap stream) 2)))
+      (:state! stream (bitwise-or (:state stream) 2)))
     (:tail stream)))
 
 (define map

@@ -177,15 +177,15 @@
   (function args
     (ash (car args) (cadr args))))
 
-;; (bit-and . numbers)
+;; (bitwise-and . numbers)
 ;; Return a bitwise AND of all provided numbers.
-(define "bit-and"
+(define "bitwise-and"
   (function args
     (cl:apply #'logand args)))
 
-;; (bit-or . numbers)
+;; (bitwise-or . numbers)
 ;; Return a bitwise OR of all provided numbers.
-(define "bit-or"
+(define "bitwise-or"
   (function args
     (cl:apply #'logior args)))
 
