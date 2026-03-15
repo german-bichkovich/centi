@@ -27,6 +27,18 @@
       (:state! stream (bitwise-or (:state stream) 2)))
     (:tail stream)))
 
+### Generators #######################################################
+
+
+(define range
+  (function (from to step)
+    (if (> from to)
+        ()
+	(pair from
+              (range (+ from step) to step)))))
+
+### Transformers #####################################################
+
 (define map
   (function (f stream)
     (if (stream? stream)
@@ -42,14 +54,6 @@
                   (filter f (tail stream)))
             (filter f (tail stream)))
         ())))
-
-(define fold
-  (function (f value stream)
-    (if (stream? stream)
-        (fold f
-              (f value (head stream))
-              (tail stream))
-        value)))
 
 (define take
   (function (stream n)
@@ -68,6 +72,16 @@
             (drop (tail stream) (- n 1)))
         ())))
 
+### Reducers #########################################################
+
+(define fold
+  (function (f value stream)
+    (if (stream? stream)
+        (fold f
+              (f value (head stream))
+              (tail stream))
+        value)))
+
 (define nth
   (function (stream n . rest)
     (if (stream? stream)
@@ -78,32 +92,19 @@
                  (list:head stream)))
         (list:head stream))))
 
-(define range
-  (function (from to step)
-    (if (> from to)
-        ()
-	(pair from
-              (range (+ from step) to step)))))
 
-# (define c
-#   (map (function (x) (exponent x 3))
-#        (range 0 10 1)))
 
-# (head c)
-# (head (tail c))
-# (head (tail (tail c)))
-# (head (tail (tail (tail c)))
-# (head (tail (tail (tail (tail c)))))
-# (head (tail (tail (tail (tail (tail c))))))
 
 (export stream?
         pair
         head
         tail
+
+        range
         map
         filter
-        fold
         take
         drop
+        fold
         nth
         range)
