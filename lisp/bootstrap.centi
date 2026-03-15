@@ -15,6 +15,8 @@
 #      not doing so will break it.
 (:define print :print)
 
+(:define list:pair pair)
+
 (:define quote
   (special (form) nil
     (declare name quote
@@ -572,6 +574,9 @@ first form will return nil, second - default.")
         (pair:head! l (f (head l)))
         (recur (tail l))))
     list))
+
+# TODO
+(:define list:reverse! list:reverse)
 
 ### Core 3 ###########################################################
 
