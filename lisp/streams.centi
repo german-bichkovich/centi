@@ -29,6 +29,9 @@
 
 ### Generators #######################################################
 
+(define iterate
+  (function (f value)
+    (pair value (iterate f (f value)))))
 
 (define range
   (function (from to step)
