@@ -75,6 +75,17 @@
             (drop (tail stream) (- n 1)))
         ())))
 
+(define append
+  (function streams
+    (if (pair? streams)
+        (let (((stream . streams) streams))
+          (if (stream? stream)
+              (pair (head stream)
+                    (apply append
+                           (list:pair (tail stream) streams)))
+              (apply append streams)))
+        ())))
+
 ### Reducers #########################################################
 
 (define fold
