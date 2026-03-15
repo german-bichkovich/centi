@@ -29,6 +29,13 @@
 
 ### Generators #######################################################
 
+(define list->stream
+  (function (list)
+    (if (pair? list)
+        (pair (list:head list)
+              (list->stream (list:tail list)))
+        nil)))
+
 (define iterate
   (function (f value)
     (pair value (iterate f (f value)))))
@@ -114,7 +121,10 @@
         head
         tail
 
+        list->stream
         range
+        iterate
+
         map
         filter
         take
