@@ -189,6 +189,18 @@
   (function args
     (cl:apply #'logior args)))
 
+;; (bitwise-exclusive-or number)
+;; Return a bitwise XOR of all provided numbers.
+(define "bitwise-exclusive-or"
+  (function args
+    (cl:apply #'logxor args)))
+
+;; (bitwise-not number)
+;; Return a bitwise NOT of a number.
+(define "bitwise-not"
+  (function args
+    (lognot (car args))))
+
 ;; (>> number n)
 ;; Bit shift number by n bits to the right.
 (define ">>"
