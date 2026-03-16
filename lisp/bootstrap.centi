@@ -773,7 +773,8 @@ first form will return nil, second - default.")
   hashmap::new0
   hashmap?
   (hash-function hashmap:hash-function nil)
-  (:data hashmap::data hashmap::data!))
+  (equality-function hashmap:equality-function nil)
+  (data hashmap::data hashmap::data!))
 
 (:define hash
   (function (object)
@@ -782,32 +783,43 @@ first form will return nil, second - default.")
          (true             0))))
 
 (:define hashmap::new
-  (function (capacity hash-function)
-    (hashmap::new0 hash-function
-                   (array::new #;length (if (== capacity 0)
-                                            1
-                                            capacity)
-                               #;default ()))))
+  (function (capacity hash-function equality-function)
+    (hashmap::new0 #;hash-function hash-function
+                   #;equality-function equality-function
+                   #;data (array::new #;length (if (== capacity 0)
+                                                   1
+                                                   capacity)
+                                      #;default ()))))
+
+(:define hashmap::find-entry
+  (function (bucket key equal?)
+    (if (pair? bucket)
+        (if (equal? (head (head bucket)) key)
+            (head bucket)
+            (hashmap::find-entry (tail bucket) key equal?))
+        nil)))
 
 (:define hashmap:capacity
   (function (hashmap)
     (array:length (hashmap::data hashmap))))
 
 (:define hashmap:set!
-  (function (hashmap key value)
-    (let ((index (modulo ((hashmap:hash-function hashmap) key)
-                         (hashmap:capacity hashmap)))
-          (bucket (array:get (hashmap::data hashmap) index))
-          (entry (alist:find bucket key)))
+  (function (h k v)
+    (let ((index (modulo ((hashmap:hash-function h) k)
+                         (hashmap:capacity h)))
+          (bucket (array:get (hashmap::data h) index))
+          (entry (hashmap::find-entry bucket
+                                      k
+                                      (hashmap:equality-function h))))
       (if (pair? entry)
-          (pair:tail! entry value)
-          (array:set! (hashmap::data hashmap)
+          (pair:tail! entry v)
+          (array:set! (hashmap::data h)
                       index
-                      (pair (pair key value) bucket)))
-      hashmap)))
+                      (pair (pair k v) bucket)))
+      h)))
 
 (:define hashmap:get
-  (function (hashmap key . rest)
+  (function (h k . rest)
     (declare name hashmap:get
              documentation "(hashmap:get hashmap key)
 (hashmap:get hashmap key default)
@@ -816,10 +828,12 @@ Get a key from hashmap.
 
 If key does not exist, first form returns nil, second form returns
 default.")
-    (let ((index (modulo ((hashmap:hash-function hashmap) key)
-                         (hashmap:capacity hashmap)))
-          (bucket (array:get (hashmap::data hashmap) index))
-          (entry (alist:find bucket key)))
+    (let ((index (modulo ((hashmap:hash-function h) k)
+                         (hashmap:capacity h)))
+          (bucket (array:get (hashmap::data h) index))
+          (entry (hashmap::find-entry bucket
+                                      k
+                                      (hashmap:equality-function h))))
       (if (pair? entry)
           (tail entry)
           (head rest)))))
@@ -835,7 +849,8 @@ default.")
       (if (odd? length)
           (die "hashmap: missing value")
           (loop ((h (hashmap::new #;capacity length
-                                  #;hash-function hash))
+                                  #;hash-function hash
+                                  #;equality-function ==))
                  (os objects))
             (if (pair? os)
                 (let (((key value . rest) os))
@@ -916,7 +931,8 @@ default.")
 (:define hashmap:new
   (function (options)
     (hashmap::new (hashmap:get options 'capacity 10)
-                  (hashmap:get options 'hash-function hash))))
+                  (hashmap:get options 'hash-function hash)
+                  (hashmap:get options 'equality-function ==))))
 
 ### Specials #########################################################
 
