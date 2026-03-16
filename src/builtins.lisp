@@ -327,13 +327,13 @@
   (function args
     (record-length (car args))))
 
-;; (record:get record index)
+;; (record:nth record n)
 ;; Get nth field of a record.
 ;; 0th field stores the type.
-(define "record:get"
+(define "record:nth"
   (function args
     (destructuring-bind (r n) args
-      (record-get r n))))
+      (record-nth r n))))
 
 ;; (record:set! record index value)
 ;; Set nth field of a record to value.

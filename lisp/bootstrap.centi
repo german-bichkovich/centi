@@ -750,7 +750,7 @@ first form will return nil, second - default.")
                              (list name)
                              (list when
                                    (list predicate name)
-                                   (list record:get name index)))
+                                   (list record:nth name index)))
                        env)))
           (make-mutator
            (function (index)

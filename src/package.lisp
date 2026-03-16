@@ -50,7 +50,7 @@
    :record?
    :record-length
    :record-type
-   :record-get
+   :record-nth
    :record-set!
    
    ;; Reader

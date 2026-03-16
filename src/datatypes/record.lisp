@@ -11,7 +11,7 @@
 (defun record-length (r)
   (length (record-data r)))
 
-(defun record-get (r index)
+(defun record-nth (r index)
   (aref (record-data r) index))
 
 (defun record-set! (r index value)
