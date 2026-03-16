@@ -2,23 +2,23 @@
 # A simple implementation of laziness with caching.
 
 (define-record-type lazy
-  :new
+  new
   lazy?
-  (:value :value :value!)
-  (:forced? forced? :forced!))
+  (value value value!)
+  (forced? forced? forced!))
 
 (define delay
   (special (object) env
-    (:new (function () (evaluate object env))
-          false)))
+    (new (function () (evaluate object env))
+         false)))
 
 (define force
   (function (object)
-    (if (delayed? object)
+    (if (lazy? object)
         (do (when-not (forced? object)
-              (:value! object ((:value object)))
-              (:forced! object true))
-            (:value object))
+              (value! object ((value object)))
+              (forced! object true))
+            (value object))
         object)))
 
 (export lazy?
