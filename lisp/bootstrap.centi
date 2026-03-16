@@ -771,6 +771,22 @@ first form will return nil, second - default.")
                  (list:enumerate slot-forms))
       nil)))
 
+(:define record:get
+  (function (record name)
+    (declare documentation "(record:get record slot-name)
+
+Return value from a record's slot with provided name.
+It's preferred to use record:nth when you know which index the value
+has.")
+    (let ((type (record:type record))
+          (length (array:length type)))
+      (loop ((index 1))
+        (if (< index length)
+            (if (== name (array:get type index))
+                (record:nth record (1- index))
+                (recur (+ index 1)))
+            (die "record:get: unknown slot"))))))
+
 ### Boxes ############################################################
 
 (define-record-type box
