@@ -1,4 +1,13 @@
 # -*- scheme -*-
+# A library implementing streams (a.k.a. lazy lists).
+# Each stream node is a record of 3 fields:
+#   head: element stored in the node
+#   tail: reference to a next field
+#   state: an integer showing if head or tail had been evaluate.
+#          First bit is for head state, second - tail.
+# This approach had been chosen over using pairs of lazy objects
+# because it reduces allocations and pointer chasing, as well as
+# improves clarity - a stream is always a sequence.
 
 (define-record-type stream
   :new
