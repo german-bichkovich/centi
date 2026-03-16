@@ -131,6 +131,13 @@
               (recur (tail s) (- n 1)))
           (list:head rest)))))
 
+(define stream->list
+  (function (stream)
+    (if (stream? stream)
+        (list:pair (head stream)
+                   (stream->list (tail stream)))
+        ())))
+
 ######################################################################
 
 (export stream?
@@ -152,3 +159,4 @@
 
         fold
         nth)
+        stream->list)
