@@ -204,6 +204,37 @@ to the last one.
 (:define list:in?
   (function (list object)
     (list:any? (function (x) (== object x)) list)))
+(:define list:take
+  (function (list n)
+    (if (pair? list)
+        (if (> n 0)
+            (pair (head list) (list:take (tail list) (- n 1)))
+            ())
+        ())))
+
+(:define list:take-while
+  (function (f list)
+    (if (pair? list)
+        (if (f (head list))
+            (pair (head list) (list:take-while f (tail list)))
+            ())
+        ())))
+
+(:define list:drop
+  (function (list n)
+    (if (pair? list)
+        (if (> n 0)
+            (list:drop (tail list) (- n 1))
+            list)
+        ())))
+
+(:define list:drop-while
+  (function (f list)
+    (if (pair? list)
+        (if (f (head list))
+            (list:drop-while f (tail list))
+            list)
+        ())))
 
 ### Core 2 ###########################################################
 
