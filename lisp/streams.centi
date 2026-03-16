@@ -15,17 +15,19 @@
 
 (define head
   (function (stream)
-    (when (== 0 (bitwise-and (:state stream) 1))
-      (:head! stream ((:head stream)))
-      (:state! stream (bitwise-or (:state stream) 1)))
-    (:head stream)))
+    (when (stream? stream)
+      (when (== 0 (bitwise-and (:state stream) 1))
+        (:head! stream ((:head stream)))
+        (:state! stream (bitwise-or (:state stream) 1)))
+      (:head stream))))
 
 (define tail
   (function (stream)
-    (when (== 0 (bitwise-and (:state stream) 2))
-      (:tail! stream ((:tail stream)))
-      (:state! stream (bitwise-or (:state stream) 2)))
-    (:tail stream)))
+    (when (stream? stream)
+      (when (== 0 (bitwise-and (:state stream) 2))
+        (:tail! stream ((:tail stream)))
+        (:state! stream (bitwise-or (:state stream) 2)))
+      (:tail stream))))
 
 ### Generators #######################################################
 
