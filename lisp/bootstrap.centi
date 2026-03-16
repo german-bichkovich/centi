@@ -68,7 +68,7 @@ use the dynamic environment.
 
 ### Lists 1 ##########################################################
 
-(:define list:list
+(:define list
   (function args
     (declare name list
              documentation "(list . args)
@@ -77,8 +77,6 @@ use the dynamic environment.
 
 Allocate a new list of arguments.")
     args))
-
-(:define list list:list)
 
 (:define list:head
   (function (list)
