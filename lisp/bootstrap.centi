@@ -952,12 +952,23 @@ default.")
 
 ### Core 3 ###########################################################
 
+(:define require
+  (let ((cache {}))
+    (function (path)
+      # TODO general equality needed to compare strings
+      (let ((name (symbol:intern path)))
+        (if (hashmap:in? cache name)
+            (hashmap:get cache name)
+            (let ((namespace (load path)))
+              (hashmap:set! cache name namespace)
+              namespace))))))
+
 (:define resolve-namespace
   (function (spec)
     (ifs ((hashmap? spec)
           spec)
          ((string? spec)
-          (resolve-namespace (load spec)))
+          (resolve-namespace (require spec)))
          (true
           (die "resolve-namespace: not a namespace")))))
 
