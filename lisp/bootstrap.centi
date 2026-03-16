@@ -203,6 +203,14 @@ to the last one.
         (pair object (apply list:prepend objects))
         object)))
 
+(:define list:last
+  (function (list)
+    (if (pair? list)
+        (if (pair? (tail list))
+            (list:last (tail list))
+            (head list))
+        nil)))
+
 (:define list:take
   (function (list n)
     (if (pair? list)
