@@ -819,12 +819,11 @@ first form will return nil, second - default.")
 
 (:define hashmap:set!
   (function (h k v)
-    (let ((index (modulo ((hashmap:hash-function h) k)
-                         (hashmap:capacity h)))
+    (let ((hash ((hashmap:hash-function h) k))
+          (equal? (hashmap:equality-function h))
+          (index (modulo hash (hashmap:capacity h)))
           (bucket (array:get (hashmap::data h) index))
-          (entry (hashmap::find-entry bucket
-                                      k
-                                      (hashmap:equality-function h))))
+          (entry (hashmap::find-entry bucket k equal?)))
       (if (pair? entry)
           (pair:tail! entry v)
           (array:set! (hashmap::data h)
@@ -842,12 +841,11 @@ Get a key from hashmap.
 
 If key does not exist, first form returns nil, second form returns
 default.")
-    (let ((index (modulo ((hashmap:hash-function h) k)
-                         (hashmap:capacity h)))
+    (let ((hash ((hashmap:hash-function h) k))
+          (equal? (hashmap:equality-function h))
+          (index (modulo hash (hashmap:capacity h)))
           (bucket (array:get (hashmap::data h) index))
-          (entry (hashmap::find-entry bucket
-                                      k
-                                      (hashmap:equality-function h))))
+          (entry (hashmap::find-entry bucket k equal?)))
       (if (pair? entry)
           (tail entry)
           (head rest)))))
