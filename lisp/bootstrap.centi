@@ -709,6 +709,20 @@ first form will return nil, second - default.")
                  strings)
       result)))
 
+(:define string:equal?
+  (function (s1 s2)
+    (and (string? s1)
+         (string? s2)
+         (== (string:length s1)
+             (string:length s2))
+         (loop ((n (1- (string:length s1))))
+           (if (< n 0)
+               true
+               (if (== (string:get s1 n)
+                       (string:get s2 n))
+                   (recur (1- n))
+                   false))))))
+
 ### Records ##########################################################
 
 (:define define-record-type
