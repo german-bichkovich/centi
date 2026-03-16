@@ -1,9 +1,9 @@
 # -*- scheme -*-
-# A simple implementation of laziness.
+# A simple implementation of laziness with caching.
 
-(define-record-type delayed
+(define-record-type lazy
   :new
-  delayed?
+  lazy?
   (:value :value :value!)
   (:forced? forced? :forced!))
 
@@ -16,12 +16,11 @@
   (function (object)
     (if (delayed? object)
         (do (when-not (forced? object)
-              (:value! object ((:value lazy-object)))
+              (:value! object ((:value object)))
               (:forced! object true))
             (:value object))
         object)))
 
-(export delay
-        force
-        delayed?
-        forced?)
+(export lazy?
+        delay
+        force)
