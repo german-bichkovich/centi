@@ -204,8 +204,7 @@ can be chained together to produce various kinds of trees,
 including linked lists.
 
 Their main purpose is representing the abstract syntax tree
-(AST) of a program, although they may be used for storing any
-data, if desired.
+(AST) of a program.
 
 By convention, linked list terminates by any non-pair object,
 not necessarily an empty list.
@@ -227,7 +226,7 @@ not much different from functions, except that they do not
 evaluate their arguments.
 
 Both callable types are implemented using a structure of 4
-fields: ptree, body, env and ebind.
+fields: ptree, body, environment and ebind.
 
 Ptree, aka parameter ptree, is an object that describes how to
 destructure arguments that callable receives.
@@ -242,19 +241,19 @@ in scheme. Here are some examples:
   ((function ((x . nil)) x) '(1 2)) => 1 # aka. head
 #+end_src
 
-Env is a stored parent environment, in which function was
-created. It is used alongside ptree and ebind to construct a new
-environment in which body will be evaluated.
+Environment is a stored parent environment, in which function
+was created. It is used alongside ptree and ebind to construct
+a new environment in which body will be evaluated.
 
 Ebind is a symbol to which to bind dynamic environment when
 special is getting called. If it's nil, then there won't be any
 extra bindings - it is the default when creating functions with
 `function` builtin, but you can override the behaviour by using
 `(wrap (special ...))`.
-As an example, (special () e (env 'quote e)) is equivalent to
-`quote` - it binds calling environment to variable e, thus
-making is possible to evaluate other forms as if instead of the
-call to special.
+As an example, `(special () e (evaluate 'quote e))` is
+equivalent to `quote` - it binds calling environment to variable
+e, thus making is possible to evaluate other forms as if instead
+of the call to special.
 
 Body is a list of forms that store the body of a function. It
 gets evaluated in an environment that has stored environment as
@@ -280,12 +279,14 @@ of an array is used for storing the length of it, with lower
 
 **** General arrays
 **** Byte arrays
-**** Character arrays
+**** Strings
 *** Records
 
-Record is also considered to be a subtype of an array, because
-Centi doesn't support packing, making a struct no different from
-an array.
+Record is like a general array, but it's first element is an
+array where first element is pretty name of the record type
+and rest are names of the fields.
+
+Centi records do not support packing.
 
 ** Garbage collection
 
