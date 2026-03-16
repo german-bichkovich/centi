@@ -1,7 +1,7 @@
 # -*- scheme -*-
 # A simple implementation of laziness.
 
-(define-record-type lazy-object
+(define-record-type delayed
   :new
   delayed?
   (:value :value :value!)
@@ -13,11 +13,13 @@
           false)))
 
 (define force
-  (function (lazy-object)
-    (when-not (forced? lazy-object)
-      (:forced! lazy-object true)
-      (:value! lazy-object ((:value lazy-object))))
-    (:value lazy-object)))
+  (function (object)
+    (if (delayed? object)
+        (do (when-not (forced? object)
+              (:value! object ((:value lazy-object)))
+              (:forced! object true))
+            (:value object))
+        object)))
 
 (export delay
         force
