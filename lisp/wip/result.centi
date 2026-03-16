@@ -5,10 +5,10 @@
   (data data nil))
 
 (define ok
-  (curry result true))
+  (partial result true))
 
 (define error
-  (curry result false))
+  (partial result false))
 
 (define error?
   (compose not ok?))
@@ -19,8 +19,8 @@
            (value value))
       (ifs ((ok? value)
             (if (pair? fs)
-                (recurse (pair:tail fs)
-                         ((pair:head fs) (data value)))
+                (recurse (tail fs)
+                         ((head fs) (data value)))
                 value))
            ((error? value)
             value)
