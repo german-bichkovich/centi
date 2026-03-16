@@ -9,33 +9,35 @@
 # because it reduces allocations and pointer chasing, as well as
 # improves clarity - a stream is always a sequence.
 
+### Core #############################################################
+
 (define-record-type stream
-  :new
+  new
   stream?
-  (:head :head :head!)
-  (:tail :tail :tail!)
-  (:state :state :state!))
+  (head :head head!)
+  (tail :tail tail!)
+  (state state state!))
 
 (define pair
   (special (head tail) env
-    (:new (function () (evaluate head env))
-          (function () (evaluate tail env))
-          0)))
+    (new (function () (evaluate head env))
+         (function () (evaluate tail env))
+         0)))
 
 (define head
   (function (stream)
     (when (stream? stream)
-      (when (== 0 (bitwise-and (:state stream) 1))
-        (:head! stream ((:head stream)))
-        (:state! stream (bitwise-or (:state stream) 1)))
+      (when (== 0 (bitwise-and (state stream) 1))
+        (head! stream ((:head stream)))
+        (state! stream (bitwise-or (state stream) 1)))
       (:head stream))))
 
 (define tail
   (function (stream)
     (when (stream? stream)
-      (when (== 0 (bitwise-and (:state stream) 2))
-        (:tail! stream ((:tail stream)))
-        (:state! stream (bitwise-or (:state stream) 2)))
+      (when (== 0 (bitwise-and (state stream) 2))
+        (tail! stream ((:tail stream)))
+        (state! stream (bitwise-or (state stream) 2)))
       (:tail stream))))
 
 ### Generators #######################################################
@@ -153,11 +155,9 @@
         pair
         head
         tail
-
         list->stream
         range
         iterate
-
         map
         filter
         take
@@ -165,7 +165,6 @@
         drop
         drop-while
         append
-
         fold
-        nth)
+        nth
         stream->list)
