@@ -920,14 +920,12 @@ default.")
 
 (:define hashmap:in?
   (function (hashmap key)
-    (-> (hashmap:hash-function hashmap)
-        (_ key)
-        (modulo _ (hashmap:capacity hashmap))
-        (array:get (hashmap::data hashmap) _)
-        (hashmap::find-entry _
-                             key
-                             (hashmap:equality-function hashmap))
-        (pair? _))))
+    (let ((hash ((hashmap:hash-function hashmap) key))
+          (equal? (hashmap:equality-function hashmap))
+          (index (modulo hash (hashmap:capacity hashmap)))
+          (bucket (array:get (hashmap::data hashmap) index))
+          (entry (hashmap::find-entry bucket key equal?)))
+      (pair? entry))))
 
 (:define hashmap:print
   (function (hashmap)
