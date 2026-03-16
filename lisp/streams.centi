@@ -130,10 +130,6 @@
                  (list:head stream)))
         (list:head stream))))
 
-### Collections ######################################################
-
-(define natural-numbers
-  (iterate 1+ 0))
 
 ######################################################################
 
@@ -155,6 +151,4 @@
         append
 
         fold
-        nth
-
-        natural-numbers)
+        nth)
