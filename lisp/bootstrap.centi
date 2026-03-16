@@ -146,6 +146,26 @@ Allocate a new list of arguments.")
     (list:fold (function (nil e) (f e)) nil list)
     list))
 
+(:define list:every?
+  (function (predicate list)
+    (if (pair? list)
+        (if (predicate (head list))
+            (list:every? predicate (tail list))
+            false)
+        true)))
+
+(:define list:any?
+  (function (predicate list)
+    (if (pair? list)
+        (if (predicate (head list))
+            true
+            (list:any? predicate (tail list)))
+        false)))
+
+(:define list:in?
+  (function (list object)
+    (list:any? (function (x) (== object x)) list)))
+
 (:define list:append
   (function lists
     (declare name append)
@@ -183,25 +203,6 @@ to the last one.
         (pair object (apply list:prepend objects))
         object)))
 
-(:define list:every?
-  (function (predicate list)
-    (if (pair? list)
-        (if (predicate (head list))
-            (list:every? predicate (tail list))
-            false)
-        true)))
-
-(:define list:any?
-  (function (predicate list)
-    (if (pair? list)
-        (if (predicate (head list))
-            true
-            (list:any? predicate (tail list)))
-        false)))
-
-(:define list:in?
-  (function (list object)
-    (list:any? (function (x) (== object x)) list)))
 (:define list:take
   (function (list n)
     (if (pair? list)
