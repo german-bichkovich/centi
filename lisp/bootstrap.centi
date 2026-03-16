@@ -617,71 +617,6 @@ first form will return nil, second - default.")
 # TODO
 (:define list:reverse! list:reverse)
 
-### Core 3 ###########################################################
-
-(:define resolve-namespace
-  (function (spec)
-    (if (pair? spec)
-        spec
-        (if (string? spec)
-            (load spec)
-            (die "resolve-namespace: bad specifier")))))
-
-(define export
-  (special symbols env
-    (declare pure true
-             documentation "(export . symbols)
-
-Create an alist where each key is a symbol and each value is it's
-current value.
-
-Meant to be used at the end of the module file to export bindings,
-that can later be imported with 'import' or 'use'.")
-    (list:map (function (s) (pair s (evaluate s env)))
-              symbols)))
-
-(:define import
-  (special (where symbols) env
-    (declare documentation "(import where symbols)
-
-(import '((a . 2) (b . 3) (c . 6)) (a b))
-<=>
-(do (define a 2)
-    (define b 3))
-
-Import every symbol specified into current environment.
-Argument 'where' is either an evaluated form that returns an
-assocation list from symbols to values, or a string, in which case
-file at that path gets loaded and it's last return from is imported.")
-    (let ((ns (resolve-namespace (evaluate where env))))
-      (list:fold (function (nil symbol)
-                   (environment:set! env
-                                     symbol
-                                     (alist:get ns symbol)))
-                 nil
-                 symbols)
-      ns)))
-
-(:define use
-  (special (where prefix) env
-    (declare documentation "(use where prefix)
-
-(use '((a . 2) (b . 3)) \"x:\")
-<=>
-(do (define x:a 2)
-    (define x:b 3))
-
-Like 'import', but instead of importng particular symbols, this one
-imports each of them with provided prefix.")
-    (list:fold (function (env (symbol . value))
-                 (environment:set! env
-                                   (-> (symbol:name symbol)
-                                       (string:append prefix _)
-                                       (symbol:intern _))
-                                   value))
-               env
-               (resolve-namespace (evaluate where env)))))
-
 ### Arrays 1 #########################################################
 
 (:define array
@@ -1014,6 +949,76 @@ default.")
     (declare pure true)
     (array::new (hashmap:get options 'length 0)
                 (hashmap:get options 'default nil))))
+
+### Core 3 ###########################################################
+
+(:define resolve-namespace
+  (function (spec)
+    (ifs ((hashmap? spec)
+          spec)
+         ((string? spec)
+          (resolve-namespace (load spec)))
+         (true
+          (die "resolve-namespace: not a namespace")))))
+
+(define export
+  (special symbols env
+    (declare pure true
+             documentation "(export . symbols)
+
+Create an hashmap where each key is a symbol and each value is it's
+current value.
+
+Meant to be used at the end of the module file to export bindings,
+that can later be imported with 'import' or 'use'.")
+    (list:fold (function (a e)
+                 (hashmap:set! a e (evaluate e env)))
+               (hashmap)
+               symbols)))
+
+(:define import
+  (special (where symbols) env
+    (declare documentation "(import where symbols)
+
+(import {'a 2 'b 3 'c 6} (a b))
+<=>
+(do (define a 2)
+    (define b 3))
+
+Import every symbol specified into current environment.
+Argument 'where' is either an evaluated form that returns an
+hashmap from symbols to values, or a string, in which case
+file at that path gets required and it's last return from is
+imported.")
+    (let ((ns (resolve-namespace (evaluate where env))))
+      (list:fold (function (nil symbol)
+                   (environment:set! env
+                                     symbol
+                                     (hashmap:get ns symbol nil)))
+                 nil
+                 symbols)
+      ns)))
+
+(:define use
+  (special (where prefix) env
+    (declare documentation "(use where prefix)
+
+(use {'a 2 'b 3} \"x:\")
+<=>
+(do (define x:a 2)
+    (define x:b 3))
+
+Like 'import', but instead of importng particular symbols, this one
+imports each of them with provided prefix.")
+    (hashmap:fold (function (env (symbol . value))
+                    (environment:set! env
+                                      (-> (symbol:name symbol)
+                                          (string:append prefix _)
+                                          (symbol:intern _))
+                                      value))
+                  env
+                  (resolve-namespace (evaluate where env)))))
+
 
 ### Other ############################################################
 
