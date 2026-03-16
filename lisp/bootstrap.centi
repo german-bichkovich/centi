@@ -985,15 +985,17 @@ default.")
 ### Core 3 ###########################################################
 
 (:define require
-  (let ((cache {}))
+  (let ((cache
+         (hashmap:new {'equality-function string:equal?})))
     (function (path)
-      # TODO general equality needed to compare strings
-      (let ((name (symbol:intern path)))
-        (if (hashmap:in? cache name)
-            (hashmap:get cache name)
+      (declare documentation "(require path)
+
+Like 'load', but caches the result to avoid re-evaluation.")
+        (if (hashmap:in? cache path)
+            (hashmap:get cache path)
             (let ((namespace (load path)))
-              (hashmap:set! cache name namespace)
-              namespace))))))
+              (hashmap:set! cache path namespace)
+              namespace)))))
 
 (:define resolve-namespace
   (function (spec)
