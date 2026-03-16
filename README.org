@@ -51,20 +51,12 @@ developed both on SBCL and ECL using the approach above.
 It's highly encouraged to name your forms without using
 non-standard abbriviations (or any whenever feasable).
 
-If concept is made up from many words, use kebab-case:
-- ~when-not~
-- ~evaluate-many~
-
-** Private variables
-
-Sometimes, variables are defined on top level but are not needed
-outside of the module and are just an implementation detail.
-For those cases, symbols are prefixed with ":".
+If concept is made up from many words, use kebab-case.
 
 For example:
-- ~:print1~
-- ~:fn-helper~
-- ~:table~
+- ~evaluate~
+- ~modulus~
+- ~when-not~
 
 ** Predicates
 
@@ -77,6 +69,20 @@ For example:
 
 Technically, any function that returns false or anything
 else may be a predicate, but it tends to confuse more than help.
+
+** Private variables
+
+When you want to make it explicit that some top-level variable
+is an implementation detail, you can use ':' prefix.
+
+This is used for example in streams library to differenciate
+between 'head' as the user-facing function and ':head' as raw
+accessor to structure's head field.
+
+For example:
+- ~:print~
+- ~:define~
+- ~hashmap::new~ - imported form, typically won't happen
 
 ** Namespaced symbols
 
