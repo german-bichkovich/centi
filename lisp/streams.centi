@@ -124,14 +124,12 @@
 
 (define nth
   (function (stream n . rest)
-    (if (stream? stream)
-        (if (== n 0)
-            (head stream)
-            (nth (tail stream)
-                 (- n 1)
-                 (list:head stream)))
-        (list:head stream))))
-
+    (loop ((s stream) (n n))
+      (if (stream? s)
+          (if (== n 0)
+              (head s)
+              (recur (tail s) (- n 1)))
+          (list:head rest)))))
 
 ######################################################################
 
