@@ -65,6 +65,23 @@
             (filter f (tail stream)))
         ())))
 
+(define take-while
+  (function (f stream)
+    (if (stream? stream)
+        (if (f (head stream))
+            (pair (head stream)
+                  (take-while f (tail stream)))
+            ())
+        ())))
+
+(define drop-while
+  (function (f stream)
+    (if (stream? stream)
+        (if (f (head stream))
+            (drop-while f (tail stream))
+            stream)
+        ())))
+
 (define take
   (function (stream n)
     (if (stream? stream)
@@ -132,8 +149,11 @@
         map
         filter
         take
+        take-while
         drop
+        drop-while
         append
+
         fold
         nth
 
