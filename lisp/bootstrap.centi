@@ -697,8 +697,9 @@ imports each of them with provided prefix.")
   (function (f value array)
     (let ((value (list value)))
       (dotimes (n (array:length array))
-        (head! value (f (head value)
-                        (array:get array n))))
+        (pair:head! value
+                    (f (head value)
+                       (array:get array n))))
       (head value))))
 
 # (:define array:fold-right
