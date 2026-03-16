@@ -215,7 +215,8 @@ to the last one.
   (function (list n)
     (if (pair? list)
         (if (> n 0)
-            (pair (head list) (list:take (tail list) (- n 1)))
+            (pair (head list)
+                  (list:take (tail list) (- n 1)))
             ())
         ())))
 
