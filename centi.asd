@@ -18,5 +18,5 @@
                              (:file "builtins")
                              (:file "main"))))
   :build-operation "program-op"
-  :build-pathname "./bin/centi"
+  :build-pathname "./bin/.centi"
   :entry-point "centi::main")

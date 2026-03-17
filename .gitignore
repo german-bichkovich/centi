@@ -1,5 +1,7 @@
+bin/centi
+bin/.centi
 .other
 out
-bin/centi
 .gdb_history
 **/*.fasl
+**/*.o

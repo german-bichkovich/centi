@@ -15,5 +15,15 @@ sbcl --noinform <<- EOF
 	(asdf:make :centi)
 EOF
 
+# Wrap the binary, setting CENTI_HOME if needed
+{
+	cat > ./bin/centi <<- EOF
+		#!/bin/sh
+		export CENTI_HOME="\${CENTI_HOME:-$PWD}"
+		exec "\$CENTI_HOME/bin/.centi" "\$@"
+	EOF
+	chmod +x ./bin/centi
+}
+
 # Remove .fasl files
 find -name '*.fasl' | xargs rm
