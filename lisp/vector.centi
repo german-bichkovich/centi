@@ -1,28 +1,35 @@
 # -*- mode: scheme -*-
+# A library implementing resizable arrays.
 
 (define-record-type vector
   :new
   vector?
-  (length length length!)
+  (length length :length!)
   (data data data!))
 
 (define new
   (function (options)
     (let ((capacity (hashmap:get options 'capacity 0))
           (length (hashmap:get options 'length capacity)))
-      (:new length (array::new #;length capacity
-                               #;default nil)))))
+      (:new #;length length
+            #;data (array:new {'length capacity})))))
 
 (define capacity
   (function (vector)
     (array:length (data vector))))
+
+(define length!
+  (function (vector new-value)
+    (if (< -1 new-value (capacity vector))
+        (:length! vector new-value)
+        (die "length!: out of bounds"))))
 
 (define resize!
   (function (vector new-size)
     (if (== new-size (capacity vector))
         vector
         (let ((data (data vector))
-              (new-data (array::new new-size nil)))
+              (new-data (array:new {'length new-size})))
           (dotimes (n (minimum (array:length data) new-size))
             (array:set! new-data n (array:get data n)))
           (data! vector new-data)
@@ -34,29 +41,37 @@
 
 (define set!
   (function (vector index value)
-    (if (<= 0 index (capacity vector))
+    (if (< -1 index (length vector))
         (array:set! (data vector) index value)
         (die "set!: out of bounds"))
     vector))
 
 (define get
   (function (vector index . rest)
-    (array:get (data vector) index (head rest))))
+    (if (< -1 index (length vector))
+        (array:get (data vector) index)
+        (head rest))))
 
 (define push!
   (function (vector object)
     (let ((length (length vector))
           (capacity (capacity vector)))
     (when (<= capacity length)
-      (resize! vector (* length 2)))
-    (length! vector (+ length 1))
-    (set! vector length object))))
+      (resize! vector (if (== length 0)
+                          2
+                          (* length 2))))
+    (:length! vector (+ length 1))
+    (array:set! (data vector) length object)
+    vector)))
 
 (define pop!
   (function (vector)
-    (let ((length (- (length vector) 1)))
-      (length! vector length)
-      (get vector length))))
+    (let ((new-length (1- (length vector))))
+      (if (< new-length 0)
+          (die "pop!: out of bounds")
+          (let ((value (array:get (data vector) new-length)))
+            (:length! vector new-length)
+            value)))))
 
 (define vector
   (function objects
@@ -75,6 +90,16 @@
                           (f value (array:get data n))))
       value)))
 
+(define fold
+  (function (f value vector)
+    (let ((value (box value))
+          (data (data vector)))
+      (dotimes (n (length vector))
+        (environment:set! here
+                          'value
+                          (f value (array:get data n))))
+      value)))
+
 (define each
   (function (f vector)
     (fold (function (nil e) (f e)) nil vector)
@@ -86,6 +111,12 @@
           (new {'capacity (length vector)
                 'length 0})
           vector)))
+
+(define map!
+  (function (f vector)
+    (dotimes (n (length vector))
+      (set! vector n (f (get vector n))))
+    vector))
 
 (define map!
   (function (f vector)
@@ -119,7 +150,7 @@
         resize!
         shrink!
         set!
-        get!
+        get
         push!
         pop!
         fold
