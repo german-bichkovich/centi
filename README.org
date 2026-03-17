@@ -329,11 +329,12 @@ applies to the first word of heap space:
 
 * TODOs
 
+- generic functions and oop
+  implement an efficient print generic
+- hide private variables defined in bootstrap
 - make all builtins come with a prefix to reduce overrides in
   library files
 - make hashmap:set! resize the data array
-- generic functions and oop
-  implement an efficient print generic
 - optional immutability mechanisms?
   good idea for stdenv after initial setup is completed
 - helpers to generate implementations for all array types?
