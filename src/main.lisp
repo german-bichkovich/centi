@@ -1,17 +1,23 @@
 (in-package :centi)
 
-(defun resolve-filepath (p)
-  (cond ((uiop:string-prefix-p "./" p)
-         (format nil "~a~a.centi" (uiop:getcwd) (subseq p 2)))
-        ((eq (aref p 0) #\@)
-         (format nil
-                 "~a~a.centi"
-                 (uiop:getenv "CENTI_HOME")
-                 (subseq p 1)))
-        ((eq (aref p 0) #\/)
-         (format nil "~a.centi" p))
-        (t
-         (error "resolve-filepath: bad string ~a" p))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (let ((default-home-directory (uiop:getcwd)))
+    (defun resolve-filepath (p)
+      (print (cond ((uiop:string-prefix-p "./" p)
+                    (format nil
+                            "~a~a.centi"
+                            (uiop:getcwd)
+                            (subseq p 2)))
+                   ((eq (aref p 0) #\@)
+                    (format nil
+                            "~a~a.centi"
+                            (or (uiop:getenv "CENTI_HOME")
+                                default-home-directory)
+                            (subseq p 1)))
+                   ((eq (aref p 0) #\/)
+                    (format nil "~a.centi" p))
+                   (t
+                    (error "resolve-filepath: bad string ~a" p)))))))
 
 (defun load (path &optional in-stdenv?)
   (with-open-file (s (resolve-filepath path))
