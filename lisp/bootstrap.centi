@@ -1068,14 +1068,16 @@ imported.")
 
 Like 'import', but instead of importng particular symbols, this one
 imports each of them with provided prefix.")
-    (hashmap:fold (function (env (symbol . value))
-                    (environment:set! env
-                                      (-> (symbol:name symbol)
-                                          (string:append prefix _)
-                                          (symbol:intern _))
-                                      value))
-                  env
-                  (resolve-namespace (evaluate where env)))))
+    (let ((ns (resolve-namespace (evaluate where env))))
+      (hashmap:fold (function (env (symbol . value))
+                      (environment:set! env
+                                        (-> (symbol:name symbol)
+                                            (string:append prefix _)
+                                            (symbol:intern _))
+                                        value))
+                    env
+                    ns)
+      ns)))
 
 
 ### Other ############################################################
