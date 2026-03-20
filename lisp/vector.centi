@@ -127,18 +127,16 @@
   (function (vector)
     (map identity vector)))
 
-# TODO
-# (define vector:print
-#   (function (vector)
-#     (write "[")
-#     (vector:fold (function (first? e)
-#                    (when-not first? (write " "))
-#                    (print e)
-#                    false)
-#                  true
-#                  vector)
-#     (write "]")
-#     vector))
+(define-method print Vector (object)
+  (write "[")
+  (fold (function (first? e)
+          (when-not first? (write " "))
+          (print e)
+          false)
+        true
+        object)
+  (write "]")
+  object)
 
 (export Vector
         vector
