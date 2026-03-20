@@ -1,7 +1,7 @@
 # -*- mode: scheme -*-
 # A library implementing resizable arrays.
 
-(define-record-type vector
+(define-record-type Vector
   :new
   vector?
   (length length :length!)
@@ -141,7 +141,8 @@
 #     (write "]")
 #     vector))
 
-(export vector
+(export Vector
+        vector
         vector?
         length
         length!

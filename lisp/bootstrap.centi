@@ -767,6 +767,7 @@ first form will return nil, second - default.")
                        env))))
       (bind! constructor-name constructor)
       (bind! predicate-name predicate)
+      (bind! name type)
       (list:each (function ((index nil accessor mutator))
                    (bind! accessor (make-accessor index))
                    (when-not (== mutator nil)
@@ -792,7 +793,7 @@ has.")
 
 ### Boxes ############################################################
 
-(define-record-type box
+(define-record-type Box
   box
   box?
   (value unbox box!))
@@ -803,7 +804,7 @@ has.")
 
 ### Hashmaps #########################################################
 
-(define-record-type hashmap
+(define-record-type Hashmap
   hashmap::new0
   hashmap?
   (hash-function hashmap:hash-function nil)
