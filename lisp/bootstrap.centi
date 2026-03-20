@@ -587,7 +587,7 @@ Return an absolute value of a number.")
                     (recur (+ n 1) (tail list)))
               ()))))
 
-(:define nth
+(:define list:nth
   (function (list n . rest)
     (declare documentation "(nth list n)
 (nth list n default)
