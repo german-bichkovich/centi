@@ -1087,14 +1087,189 @@ imports each of them with provided prefix.")
                     ns)
       ns)))
 
+### Generics #########################################################
 
-### Other ############################################################
+(define type
+  (function (x)
+    (ifs ((pair? x) 'pair)
+         ((symbol? x) 'symbol)
+         ((number? x) 'number)
+         ((function? x) 'function)
+         ((special? x) 'special)
+         ((array? x) 'array)
+         ((record? x) (record:type x))
+         (true 'unknown))))
+
+(define :generics {})
+
+(define generic?
+  (function (object)
+    (boolean (hashmap:get :generics
+                          object
+                          false))))
+
+(define implements?
+  (function (generic signiture)
+    (let ((method-table
+           (hashmap:get :generics generic false)))
+      (and method-table
+           (hashmap:in? method-table signiture)))))
+
+(define find-method
+  (function (generic signiture)
+    (let ((generic-methods
+           (hashmap:get :generics generic false)))
+      (and generic-methods
+           (hashmap:get generic-methods signiture)))))
+
+(define define-generic
+  (special (name . body) env
+    (let ((signiture-function
+           (evaluate (pair function body) env))
+          (generic
+           (function args
+             (let ((signiture (apply signiture-function args)))
+               (apply (find-method generic signiture)
+                      args)))))
+      (environment:set! env name generic)
+      (hashmap:set! :generics generic {})
+      generic)))
+
+(define define-method
+  (special (generic type . body) env
+    (let ((g (evaluate generic env))
+          (type (evaluate type env))
+          (method (evaluate (pair function body) env))
+          (method-table (hashmap:get :generics g false)))
+      (if method-table
+          (hashmap:set! method-table type method)
+          (die "can't add method to a non-generic"))
+      method)))
+
+### print ############################################################
+
+(define-generic print (object)
+  (let ((t (type object)))
+    (if (implements? print t)
+        t
+        'default)))
+
+(define-method print 'default (object)
+  (:print object))
+
+(define-method print Hashmap (object)
+  (write "{")
+  (hashmap:fold (function (a (k . v))
+                  (when a
+                    (write " "))
+                  (print k)
+                  (write " ")
+                  (print v)
+                  true)
+                false
+                object)
+  (write "}")
+  object)
+
+(define-method print Box (object)
+  (write "#<box ")
+  (print (unbox object))
+  (write ">")
+  object)
 
 (:define print-line
   (function (object)
     (print object)
     (write "\n")
     object))
+
+### equal? ###########################################################
+
+(define-generic equal? (object1 object2)
+  (let ((t (type object1)))
+    (if (implements? equal? t)
+        t
+        'default)))
+
+(define-method equal? 'default (o1 o2)
+  (== o1 o2))
+
+(define-method equal? 'pair (o1 o2)
+  (and (pair? o2)
+       (equal? (head o1) (head o2))
+       (equal? (tail o1) (tail o2))))
+
+(define-method equal? 'array (o1 o2)
+  (and (array? o2)
+       (== (array:length o1)
+           (array:length o2))
+       (loop ((n (array:length o1)))
+         (if (== n 0)
+             true
+             (if (equal? (array:get o1 n)
+                         (array:get o2 n))
+                 (recur (- n 1))
+                 false)))))
+
+(define =
+  (function (o . os)
+    (loop ((os os))
+      (if (pair? os)
+          (if (equal? o (head os))
+              (recur (tail os))
+              false)
+          true))))
+
+### get ##############################################################
+
+(define-generic get (where what . rest)
+  (if (pair? rest)
+      (type where)
+      'arity-2))
+
+(define-method get 'arity-2 (where what . rest)
+  (get where what nil))
+
+(define-method get 'pair (where what default)
+  (alist:get where what default))
+
+(define-method get 'array (where what default)
+  (array:get where what default))
+
+(define-method get Hashmap (where what default)
+  (hashmap:get where what default))
+
+### nth ##############################################################
+
+(define-generic nth (where n . rest)
+  (if (pair? rest)
+      (type where)
+      'arity-2))
+
+(define-method nth 'arity-2 (where n . rest)
+  (nth where n nil))
+
+(define-method nth 'pair (where n default)
+  (list:nth where n default))
+
+(define-method nth 'array (where n default)
+  (array:nth where n default))
+
+### map ##############################################################
+
+(define-generic map (f object)
+  (type object))
+
+(define-method map 'pair (f object)
+  (list:map f object))
+
+(define-method map 'array (f object)
+  (array:map f object))
+
+(define-method map Hashmap (f object)
+  (hashmap:map f object))
+
+### Other ############################################################
 
 (:define environment:here
   (special () env env))
