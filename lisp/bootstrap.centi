@@ -269,6 +269,10 @@ returned value.")
   (function (object)
     (== object false)))
 
+(:define boolean
+  (function (x)
+    (not (not x))))
+
 (:define ifs
   (special ((test . body) . clauses) env
     (declare documentation "(ifs (test . body) ...)
