@@ -620,6 +620,9 @@ first form will return nil, second - default.")
 
 ### Arrays 1 #########################################################
 
+(:define array:nth
+         array:get)
+
 (:define array
   (function objects
     (tail (list:fold (function ((n . array) e)
