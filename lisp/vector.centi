@@ -95,9 +95,8 @@
     (let ((value (box value))
           (data (data vector)))
       (dotimes (n (length vector))
-        (environment:set! here
-                          'value
-                          (f value (array:get data n))))
+        (box:update! value (function (e)
+                             (f e (array:get data n)))))
       value)))
 
 (define each
