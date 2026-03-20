@@ -273,6 +273,12 @@ returned value.")
   (function (x)
     (not (not x))))
 
+(:define if-not
+  (special (test then else) env
+    (if (evaluate test env)
+        (evaluate else env)
+        (evaluate then env))))
+
 (:define ifs
   (special ((test . body) . clauses) env
     (declare documentation "(ifs (test . body) ...)
