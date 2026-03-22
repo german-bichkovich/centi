@@ -58,6 +58,19 @@ For example:
 - ~modulus~
 - ~when-not~
 
+** Type identifiers
+
+By conventions, symbols with capitalized names are type
+identifiers.
+
+Type identifier is any unique object that won't be possible to
+reproduce - generated symbol, a particular pair or array, etc.
+
+For example:
+- ~Pair~
+- ~Array~
+- ~Hashmap~
+
 ** Predicates
 
 All predicate function names should end with "?".

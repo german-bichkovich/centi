@@ -1093,18 +1093,43 @@ imports each of them with provided prefix.")
                     ns)
       ns)))
 
-### Generics #########################################################
+### Types ############################################################
+
+(define Pair
+  (array 'Pair 'head 'tail))
+
+(define Symbol
+  (array 'Symbol 'name))
+
+(define Number
+  (symbol "Number"))
+
+(define Function
+  (array 'Function 'special))
+
+(define Special
+  (array 'Special
+         'ptree
+         'ebind
+         'body
+         'environment
+         'metadata))
+
+(define Array
+  (symbol "Array"))
 
 (define type
   (function (x)
-    (ifs ((pair? x) 'pair)
-         ((symbol? x) 'symbol)
-         ((number? x) 'number)
-         ((function? x) 'function)
-         ((special? x) 'special)
-         ((array? x) 'array)
-         ((record? x) (record:type x))
-         (true 'unknown))))
+    (ifs ((pair? x)       Pair)
+         ((symbol? x)     Symbol)
+         ((number? x)     Number)
+         ((function? x)   Function)
+         ((special? x)    Special)
+         ((array? x)      Array)
+         ((record? x)     (record:type x))
+         (true            (die "type: unknown type")))))
+
+### Generics #########################################################
 
 (define :generics {})
 
@@ -1200,12 +1225,12 @@ imports each of them with provided prefix.")
 (define-method equal? 'default (o1 o2)
   (== o1 o2))
 
-(define-method equal? 'pair (o1 o2)
+(define-method equal? Pair (o1 o2)
   (and (pair? o2)
        (equal? (head o1) (head o2))
        (equal? (tail o1) (tail o2))))
 
-(define-method equal? 'array (o1 o2)
+(define-method equal? Array (o1 o2)
   (and (array? o2)
        (== (array:length o1)
            (array:length o2))
@@ -1236,10 +1261,10 @@ imports each of them with provided prefix.")
 (define-method get 'arity-2 (where what . rest)
   (get where what nil))
 
-(define-method get 'pair (where what default)
+(define-method get Pair (where what default)
   (alist:get where what default))
 
-(define-method get 'array (where what default)
+(define-method get Array (where what default)
   (array:get where what default))
 
 (define-method get Hashmap (where what default)
@@ -1255,10 +1280,10 @@ imports each of them with provided prefix.")
 (define-method nth 'arity-2 (where n . rest)
   (nth where n nil))
 
-(define-method nth 'pair (where n default)
+(define-method nth Pair (where n default)
   (list:nth where n default))
 
-(define-method nth 'array (where n default)
+(define-method nth Array (where n default)
   (array:nth where n default))
 
 ### map ##############################################################
@@ -1266,10 +1291,10 @@ imports each of them with provided prefix.")
 (define-generic map (f object)
   (type object))
 
-(define-method map 'pair (f object)
+(define-method map Pair (f object)
   (list:map f object))
 
-(define-method map 'array (f object)
+(define-method map Array (f object)
   (array:map f object))
 
 (define-method map Hashmap (f object)
