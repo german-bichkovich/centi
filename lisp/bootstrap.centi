@@ -922,8 +922,8 @@ default.")
 
 (:define hashmap::copy-structure
   (function (hashmap)
-    (:new (capacity hashmap)
-                    (hashmap:hash-function hashmap))))
+    (hashmap::new (hashmap:capacity hashmap)
+                  (hashmap:hash-function hashmap))))
 
 (:define hashmap:copy
   (function (hashmap)
@@ -1151,7 +1151,7 @@ imports each of them with provided prefix.")
     (let ((generic-methods
            (hashmap:get :generics generic false)))
       (and generic-methods
-           (hashmap:get generic-methods signiture)))))
+           (hashmap:get generic-methods signiture false)))))
 
 (define define-generic
   (special (name . body) env
@@ -1168,10 +1168,10 @@ imports each of them with provided prefix.")
 
 (define define-method
   (special (generic type . body) env
-    (let ((g (evaluate generic env))
+    (let ((generic (evaluate generic env))
           (type (evaluate type env))
-          (method (evaluate (pair function body) env))
-          (method-table (hashmap:get :generics g false)))
+          (method-table (hashmap:get :generics generic false))
+          (method (evaluate (pair function body) env)))
       (if method-table
           (hashmap:set! method-table type method)
           (die "can't add method to a non-generic"))
