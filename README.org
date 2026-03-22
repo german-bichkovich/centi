@@ -201,6 +201,28 @@ Notes:
 - Whatever the choice is, you're still better-off implementing
   generics for array functions in the end.
  
+*** Generic functions
+
+Instead of incorporating OOP by default, Centi defines generic
+functions, strongly resembling Clojure's 'defmulti'.
+
+The difference is, instead of having a signiture function,
+generic itself searches for and calls the correct method.
+This simplifies the implementation, while making it easy to do
+any kind of dispatch - single dispatch, single dispatch with
+inheritance, multiple dispatch, dispatch based on value, etc.
+
+** Generic functions
+
+To simplify the interpreter logic, generics are implemented
+in-language using a single global table mapping functions to
+a mapping of some signiture and related method:
+
+#+begin_src scheme
+  {#<function get> {[Pair head tail] #<function alist:get>
+                    Array            #<function array:get>}}
+#+end_src
+
 ** Types
 *** Symbols
 

@@ -1139,31 +1139,24 @@ imports each of them with provided prefix.")
                           object
                           false))))
 
-(define implements?
+(define generic:method
   (function (generic signiture)
     (let ((method-table
            (hashmap:get :generics generic false)))
       (and method-table
-           (hashmap:in? method-table signiture)))))
+           (hashmap:get method-table signiture false)))))
 
-(define find-method
-  (function (generic signiture)
-    (let ((generic-methods
-           (hashmap:get :generics generic false)))
-      (and generic-methods
-           (hashmap:get generic-methods signiture false)))))
+(define generic:methods
+  (function (generic)
+    (if (generic? generic)
+        (hashmap:get :generics generic)
+        nil)))
 
 (define define-generic
   (special (name . body) env
-    (let ((signiture-function
-           (evaluate (pair function body) env))
-          (generic
-           (function args
-             (let ((signiture (apply signiture-function args)))
-               (apply (find-method generic signiture)
-                      args)))))
-      (environment:set! env name generic)
+    (let ((generic (evaluate (pair function body) env)))
       (hashmap:set! :generics generic {})
+      (environment:set! env name generic)
       generic)))
 
 (define define-method
@@ -1180,13 +1173,9 @@ imports each of them with provided prefix.")
 ### print ############################################################
 
 (define-generic print (object)
-  (let ((t (type object)))
-    (if (implements? print t)
-        t
-        'default)))
-
-(define-method print 'default (object)
-  (:print object))
+  ((or (generic:method print (type object))
+      :print)
+   object))
 
 (define-method print Hashmap (object)
   (write "{")
@@ -1217,13 +1206,10 @@ imports each of them with provided prefix.")
 ### equal? ###########################################################
 
 (define-generic equal? (object1 object2)
-  (let ((t (type object1)))
-    (if (implements? equal? t)
-        t
-        'default)))
-
-(define-method equal? 'default (o1 o2)
-  (== o1 o2))
+  ((or (generic:method equal? (type object1))
+       ==)
+   object1
+   object2))
 
 (define-method equal? Pair (o1 o2)
   (and (pair? o2)
@@ -1254,12 +1240,10 @@ imports each of them with provided prefix.")
 ### get ##############################################################
 
 (define-generic get (where what . rest)
-  (if (pair? rest)
-      (type where)
-      'arity-2))
-
-(define-method get 'arity-2 (where what . rest)
-  (get where what nil))
+  (let ((method (generic:method get (type where))))
+    (if method
+        (method where what (head rest))
+        (die "get: not implemented"))))
 
 (define-method get Pair (where what default)
   (alist:get where what default))
@@ -1273,12 +1257,10 @@ imports each of them with provided prefix.")
 ### nth ##############################################################
 
 (define-generic nth (where n . rest)
-  (if (pair? rest)
-      (type where)
-      'arity-2))
-
-(define-method nth 'arity-2 (where n . rest)
-  (nth where n nil))
+  (let ((method (generic:method nth (type where))))
+    (if method
+        (method where what (head rest))
+        (die "nth: not implemented"))))
 
 (define-method nth Pair (where n default)
   (list:nth where n default))
@@ -1289,7 +1271,10 @@ imports each of them with provided prefix.")
 ### map ##############################################################
 
 (define-generic map (f object)
-  (type object))
+  (let ((method (generic:method map (type object))))
+    (if method
+        (method f object)
+        (die "map: not implemented"))))
 
 (define-method map Pair (f object)
   (list:map f object))
