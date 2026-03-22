@@ -82,16 +82,6 @@
 
 (define fold
   (function (f value vector)
-    (let ((here (environment:here))
-          (data (data vector)))
-      (dotimes (n (length vector))
-        (environment:set! here
-                          'value
-                          (f value (array:get data n))))
-      value)))
-
-(define fold
-  (function (f value vector)
     (let ((value (box value))
           (data (data vector)))
       (dotimes (n (length vector))
