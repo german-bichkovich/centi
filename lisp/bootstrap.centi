@@ -267,7 +267,7 @@ returned value.")
 
 (:define not
   (function (object)
-    (== object false)))
+    (if object false true)))
 
 (:define boolean
   (function (x)
@@ -1164,9 +1164,9 @@ imports each of them with provided prefix.")
           (generic
            (function args
              (let ((method (apply dispatch-function args)))
-               (if (== method nil)
-                   (die "%s: not implemented" name)
-                   (apply method args))))))
+               (if method
+                   (apply method args)
+                   (die "method not implemented" name))))))
       (hashmap:set! :generics generic (pair dispatch-function {}))
       (environment:set! env name generic)
       generic)))
@@ -1185,10 +1185,8 @@ imports each of them with provided prefix.")
 ### print ############################################################
 
 (define-generic print (object)
-  (let ((method (generic:method print (type object))))
-    (if (== method nil)
-        :print
-        method)))
+  (or (generic:method print (type object))
+      :print))
 
 (define-method print Pair (object)
   (write "(")
@@ -1246,10 +1244,8 @@ imports each of them with provided prefix.")
 ### equal? ###########################################################
 
 (define-generic equal? (object1 object2)
-  (let ((method (generic:method equal? (type object1))))
-    (if (== method nil)
-        ==
-        method)))
+  (or (generic:method equal? (type object1))
+      ==))
 
 (define-method equal? Pair (o1 o2)
   (and (pair? o2)
@@ -1281,11 +1277,11 @@ imports each of them with provided prefix.")
 
 (define-generic get (where what . rest)
   (let ((method (generic:method get (type where))))
-    (when-not (== method nil)
+    (when method
       (if (pair? rest)
           method
           (function (where what)
-                    (method where what nil))))))
+            (method where what nil))))))
 
 (define-method get Pair (where what default)
   (alist:get where what default))
@@ -1300,7 +1296,7 @@ imports each of them with provided prefix.")
 
 (define-generic nth (where what . rest)
   (let ((method (generic:method nth (type where))))
-    (when-not (== method nil)
+    (when method
       (if (pair? rest)
           method
           (function (where what)

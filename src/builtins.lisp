@@ -8,7 +8,8 @@
 
 (defun cbool->bool (x)
   "Convert Centi boolean to CL boolean."
-  (not (eq x (intern "false"))))
+  (not (member x (list (intern "false")
+                       (intern "nil")))))
 
 (defmacro define (name thing)
   `(progn (environment-set! *stdenv* (intern ,name) ,thing)
