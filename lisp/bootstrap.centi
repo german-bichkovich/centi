@@ -1235,7 +1235,7 @@ imports each of them with provided prefix.")
        (== (array:length o1)
            (array:length o2))
        (loop ((n (array:length o1)))
-         (if (== n 0)
+         (if (< n 0)
              true
              (if (equal? (array:get o1 n)
                          (array:get o2 n))
