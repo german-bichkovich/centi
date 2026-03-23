@@ -1118,6 +1118,9 @@ imports each of them with provided prefix.")
 (define Array
   (symbol "Array"))
 
+(define String
+  (symbol "String"))
+
 (define type
   (function (x)
     (ifs ((pair? x)       Pair)
@@ -1126,6 +1129,7 @@ imports each of them with provided prefix.")
          ((function? x)   Function)
          ((special? x)    Special)
          ((array? x)      Array)
+         ((string? x)     String)
          ((record? x)     (record:type x))
          (true            (die "type: unknown type")))))
 
