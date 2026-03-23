@@ -1190,6 +1190,32 @@ imports each of them with provided prefix.")
         :print
         method)))
 
+(define-method print Pair (object)
+  (write "(")
+  (print (head object))
+  (loop ((o (tail object)))
+    (ifs ((pair? o)
+          (write " ")
+          (print (head o))
+          (recur (tail o)))
+         ((== o ())
+          (write ")"))
+         (true
+          (write " . ")
+          (print o)
+          (write ")"))))
+  object)
+
+(define-method print Array (object)
+  (write "[")
+  (array:fold (function (first? e)
+                (when-not first? (write " "))
+                (print e)
+                false)
+              true
+              object)
+  (write "]")
+  object)
 
 (define-method print Hashmap (object)
   (write "{")
