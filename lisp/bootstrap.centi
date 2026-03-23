@@ -1283,6 +1283,20 @@ imports each of them with provided prefix.")
 (define-method get Hashmap (where what default)
   (hashmap:get where what default))
 
+### length ###########################################################
+
+(define-generic length (x)
+  (generic:method length (type x)))
+
+(define-method length Pair (x)
+  (list:length x))
+
+(define-method length Array (x)
+  (array:length x))
+
+(define-method length String (x)
+  (string:length x))
+
 ### nth ##############################################################
 
 (define-generic nth (where what . rest)
