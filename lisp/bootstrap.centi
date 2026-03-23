@@ -38,6 +38,11 @@ Return unevaluated object as is.")
 # Empty list symbol.
 (:define () '())
 
+(:define comment
+  (special nil nil nil))
+
+(:define declare comment)
+
 (:define function
   (special (ptree . body) env
     (declare documentation "(function ptree . body)
@@ -50,11 +55,6 @@ use the dynamic environment.
                           (pair ptree
                                 (pair nil body)))
                     env))))
-
-(:define comment
-  (special nil nil nil))
-
-(:define declare comment)
 
 (:define apply
   (wrap (special (f argument-list) env
@@ -433,21 +433,26 @@ Inspired by clojure's loop/recur.")
 
 (:define let
   (special (bindings . body) env
-    (:define bind! (function (k v) (environment:set! env k v)))
-    (evaluate-many body (list:fold (function (env (ptree form))
-                                     (destructure ptree
-                                                  (evaluate form env)
-                                                  bind!)
-                                     env)
-                                   (environment env)
-                                   bindings))))
+    (:define bind!
+      (function (k v)
+        (environment:set! env k v)))
+    (evaluate-many body
+                   (list:fold (function (env (ptree form))
+                                (destructure ptree
+                                             (evaluate form env)
+                                             bind!)
+                                env)
+                              (environment env)
+                              bindings))))
 
 
 ### Numbers 1 ########################################################
 
 (:define +
   (function numbers
-    (list:fold (function (a e) (- e (- 0 a))) 0 numbers)))
+    (list:fold (function (a e) (- e (- 0 a)))
+               0
+               numbers)))
 
 (:define *
   (function numbers
@@ -462,7 +467,6 @@ Inspired by clojure's loop/recur.")
 
 (:define exponent
   (function (base power)
-    (declare documentation)
     (:define helper
       (function (b p)
         (if (< p 1)
