@@ -962,21 +962,6 @@ default.")
           (entry (hashmap::find-entry bucket key equal?)))
       (pair? entry))))
 
-(:define hashmap:print
-  (function (hashmap)
-    (write "{")
-    (hashmap:fold (function (a (k . v))
-                    (when a
-                      (write " "))
-                    (print k)
-                    (write " ")
-                    (print v)
-                    true)
-                  false
-                  hashmap)
-    (write "}")
-    hashmap))
-
 (:define hashmap:new
   (function (options)
     (hashmap::new (hashmap:get options 'capacity 10)
