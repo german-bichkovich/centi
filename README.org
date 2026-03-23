@@ -203,25 +203,36 @@ Notes:
  
 *** Generic functions
 
-Instead of incorporating OOP by default, Centi defines generic
-functions, strongly resembling Clojure's 'defmulti'.
+Instead of incorporating OOP by default, Centi implements
+generic functions, strongly resembling Clojure's 'defmulti'.
 
-The difference is, instead of having a signiture function,
-generic itself searches for and calls the correct method.
-This simplifies the implementation, while making it easy to do
-any kind of dispatch - single dispatch, single dispatch with
-inheritance, multiple dispatch, dispatch based on value, etc.
+This approach has a simple implementation, while making it easy
+to do any kind of dispatch - single dispatch, single dispatch
+with inheritance, multiple dispatch, dispatch based on value,
+etc. The cost is not letting the users extend how core dispatch
+is done - for example, if your generic hardcodes dispatch based
+on type of an object, you can't really add inheritance to it.
+
+Unlike Clojure's implementation, dispatch function returns
+the method itself instead of a signiture. This makes dispatch
+more explicit and sometimes improves efficiency, like preventing
+extra table lookup in case of 2 provided arguments to 'get'
+generic.
 
 ** Generic functions
 
 To simplify the interpreter logic, generics are implemented
 in-language using a single global table mapping functions to
-a mapping of some signiture and related method:
+a pair of it's dispatch function and a table of signitures and
+related methods:
 
 #+begin_src scheme
-  {#<function get> {[Pair head tail] #<function alist:get>
-                    Array            #<function array:get>}}
+  {#<function get> {(#<function> . [Pair head tail]) #<function alist:get>
+                    (#<function> . Array)            #<function array:get>}}
 #+end_src
+
+In the future, it may be preferred to have generics be a special
+record type instead.
 
 ** Types
 *** Symbols
@@ -364,8 +375,8 @@ applies to the first word of heap space:
 
 * TODOs
 
-- generic functions and oop
-  implement an efficient print generic
+- make nil be treated as false
+- subtyping?
 - hide private variables defined in bootstrap
 - make all builtins come with a prefix to reduce overrides in
   library files
