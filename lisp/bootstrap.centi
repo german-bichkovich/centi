@@ -308,6 +308,8 @@ returned value.")
         nil
         (evaluate-many body env))))
 
+(:define unless when-not)
+
 (:define ->
   (special forms env
     (declare documentation "(-> . forms)
