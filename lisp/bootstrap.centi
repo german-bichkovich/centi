@@ -631,7 +631,7 @@ first form will return nil, second - default.")
         (recur (tail l))))
     list))
 
-# TODO
+# TODO do with mutation
 (:define list:reverse! list:reverse)
 
 ### Arrays 1 #########################################################
@@ -657,26 +657,16 @@ first form will return nil, second - default.")
                        (array:get array n))))
       (head value))))
 
-# (:define array:fold-right
-#   (function (f value array)
-#     (let ((here (environment:here))
-#           (length (array:length array)))
-#       (dotimes (n length)
-#         (environment:set! here
-#                           'value
-#                           (f value
-#                              (array:get array (- length n 1)))))
-#       value)))
-
-# TODO check
 (:define array:fold-right
   (function (f value array)
-    (let ((value (list value)))
+    (let ((here (environment:here))
+          (length (array:length array)))
       (dotimes (n length)
-        (pair:head! value (f (head value)
-                             (array:get (array:length array)
-                                        (- length n 1)))))
-      (head value))))
+        (environment:set! here
+                          'value
+                          (f value
+                             (array:get array (- length n 1)))))
+      value)))
 
 (:define array:copy
   (function (array)
@@ -887,13 +877,13 @@ default.")
           (tail entry)
           (head rest)))))
 
-# TODO docstring
-# (hashmap 'a 5 'b 6) => {a 5 b 6}
-# {'a 5} <=> (hashmap 'a 5)
-# Create a hashmap out of args, with each odd
-# argument being the key, and each even - key's value.
 (:define hashmap
   (function objects
+    (declare documentation "(hashmap 'a 5 'b 6) => {a 5 b 6}
+
+{'a 5} <=> (hashmap 'a 5)
+Create a hashmap out of args, with each odd
+argument being the key, and each even - key's value.")
     (let ((length (list:length objects)))
       (if (odd? length)
           (die "hashmap: missing value")
@@ -1121,8 +1111,7 @@ imports each of them with provided prefix.")
          ((special? x)    Special)
          ((array? x)      Array)
          ((string? x)     String)
-         ((record? x)     (record:type x))
-         (true            (die "type: unknown type")))))
+         ((record? x)     (record:type x)))))
 
 ### Generics #########################################################
 
