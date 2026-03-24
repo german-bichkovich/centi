@@ -375,7 +375,8 @@ applies to the first word of heap space:
 
 * TODOs
 
-- make nil be treated as false
+- look into algebraic effects
+- IO system
 - subtyping?
 - hide private variables defined in bootstrap
 - make all builtins come with a prefix to reduce overrides in
@@ -395,7 +396,6 @@ applies to the first word of heap space:
 - write a partial evaluator
 - find a good hash function
 - implement a profiler
-- look into algebraic effects
 - Make compiler do type inference to reduce type checks at runtime
 
 #+begin_src elisp
