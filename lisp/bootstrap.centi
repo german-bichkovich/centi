@@ -400,8 +400,6 @@ Inspired by clojure's loop/recur.")
 
 ######################################################################
 
-# TODO
-
 # Destructure FORM over PTREE. Whenever ptree is a symbol, do
 # (callback symbol form).
 (:define destructure
