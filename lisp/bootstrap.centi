@@ -1244,6 +1244,9 @@ imports each of them with provided prefix.")
                      (recur (- n 1))
                      false))))))
 
+(define-method equal? String (o1 o2)
+  (string:equal? o1 o2))
+
 (define =
   (function (o . os)
     (loop ((os os))
