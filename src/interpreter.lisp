@@ -20,39 +20,60 @@
         (t
          (error "destructure: unsupported ptree: ~a" ptree))))
 
-(defun evaluate (form env)
-  (cond ((symbol? form)
-         (let ((x (environment-find env form)))
+(defun evaluate (f e k)
+  (cond ((symbol? f)
+         (let ((x (environment-find e f)))
            (if x
-               (environment-get x form)
-               (error "evaluate: unbound variable: '~a'" form))))
-        ((consp form)
-         (destructuring-bind (f . args) form
-           (apply (evaluate f env) args env)))
-        (t form)))
+               (funcall k (environment-get x f))
+               ;; TODO validate
+               (progn (format t "evaluate: unbound variable: ~a~%" f)
+                      (intern "nil")))))
+        ((consp f)
+         (destructuring-bind (f . args) f
+           (evaluate f e (lambda (f) (apply f args e k)))))
+        (t
+         (funcall k f))))
 
-(defun evaluate-many (forms env)
-  "Evaluate FORMS in ENV in a loop and return last result."
-  (loop for form in forms
-        for result = (evaluate form env)
-        finally (return result)))
+(defun evaluate-many (fs e k)
+  "Evaluate FS in E in a loop and return last result."
+  (labels ((helper (fs value)
+             (if (consp fs)
+                 (evaluate (car fs)
+                           e
+                           (lambda (value)
+                             (helper (cdr fs) value)))
+                 (funcall k value))))
+    (helper fs (intern "nil"))))
 
-(defun apply (form args env)
-  (cond ((special? form)
-         (with-slots (ptree body environment ebind) form
+(defun evaluate-map (fs e k)
+  (labels ((helper (fs k)
+             (if (consp fs)
+                 (evaluate (car fs)
+                           e
+                           (lambda (value)
+                             (helper (cdr fs)
+                                     (lambda (x)
+                                       (funcall k
+                                                (cons value x))))))
+                 (funcall k nil))))
+    (helper fs k)))
+
+(defun apply (f a e k)
+  (cond ((special? f)
+         (with-slots (ptree body environment ebind) f
            (if (functionp body)
-               (funcall body args env)
+               (funcall body a e k)
                (let ((new-env (environment environment)))
                  (destructure ptree
-                              args
+                              a
                               (lambda (k v)
                                 (environment-set! new-env k v)))
                  (unless (eq ebind (intern "nil"))
-                   (environment-set! new-env ebind env))
-                 (evaluate-many body new-env)))))
-        ((function? form)
-         (apply (unwrap form)
-                (mapcar (lambda (form) (evaluate form env)) args)
-                env))
+                   (environment-set! new-env ebind e))
+                 (evaluate-many body new-env k)))))
+        ((function? f)
+         (evaluate-map a
+                       e
+                       (lambda (a) (apply (unwrap f) a e k))))
         (t
-         (error "capply: can't apply ~a" form))))
+         (error "capply: can't apply ~a" f))))

@@ -26,10 +26,11 @@
 (define "evaluate"
   (wrap (special args env
           (destructuring-bind (form &optional (env env)) args
-            (evaluate form env)))))
+            (evaluate form env k)))))
 
 (setf (special-metadata (unwrap (evaluate (intern "evaluate")
-                                          *stdenv*)))
+                                          *stdenv*
+                                          #'identity)))
       (read-string "((name . evaluate))"))
 
 ;; (if 'test 'then 'else)
@@ -37,9 +38,12 @@
 (define "if"
   (special args env
     (destructuring-bind (test then else) args
-      (if (cbool->bool (evaluate test env))
-          (evaluate then env)
-          (evaluate else env)))))
+      (evaluate test
+                env
+                (lambda (test)
+                  (if (cbool->bool test)
+                      (evaluate then env k)
+                      (evaluate else env k)))))))
 
 ;; (symbol name)
 ;; Create a symbol that is not interned.
@@ -113,14 +117,17 @@
 (define "special"
   (special args env
     (destructuring-bind (ptree ebind . body) args
-      (special-new :ebind ebind
-                   :ptree ptree
-                   :body (special-remove-declaration body)
-                   :environment env
-                   :metadata (special-extract-metadata body)))))
+      (funcall k
+               (special-new :ebind ebind
+                            :ptree ptree
+                            :body (special-remove-declaration body)
+                            :environment env
+                            :metadata
+                            (special-extract-metadata body))))))
 
 (setf (special-metadata (evaluate (intern "special")
-                                  *stdenv*))
+                                  *stdenv*
+                                  #'identity))
       (read-string "((name . special)
                      (pure . true))"))
 
@@ -137,7 +144,8 @@
     (wrap (car args))))
 
 (setf (special-metadata (unwrap (evaluate (intern "wrap")
-                                          *stdenv*)))
+                                          *stdenv*
+                                          #'identity)))
       (read-string "((name . wrap) (pure . true))"))
 
 ;; (number? object)
@@ -415,6 +423,7 @@
     (uiop:quit (car args))))
 
 ;; TODO remove
+;; TODO drop continuation properly
 ;; (die message)
 ;; Print message and kill current process.
 (define "die"

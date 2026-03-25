@@ -68,9 +68,10 @@ that forces evaluation of its arguments."
     :ebind ,(if (consp ebind) ebind `',ebind)
     :ptree 'args
     :environment 'nil
-    :body (lambda (args env)
-            (declare (ignorable args env))
+    :body (lambda (args env k)
+            (declare (ignorable args env k))
             ,@body)))
 
 (defmacro function (parameter &rest body)
-  `(wrap (special ,parameter (centi:intern "nil") . ,body)))
+  `(wrap (special ,parameter (centi:intern "nil")
+                  (funcall k (progn . ,body)))))

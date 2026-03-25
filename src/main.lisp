@@ -26,7 +26,7 @@
                          (environment *stdenv*))
           for form = (read :stream s)
           until (member form (list 'EOF (intern "nil")))
-          for value = (evaluate form env)
+          for value = (evaluate form env #'identity) ; TODO break
           finally (return value))))
 
 (defun repl ()
@@ -34,7 +34,7 @@
     with environment = (environment *stdenv*)
     for form = (read :stream nil)
     until (member form (list 'EOF (intern "nil")))
-    do (evaluate (list (intern "print") form) environment)
+    do (evaluate (list (intern "print") form) environment #'identity)
        (terpri)))
 
 (defun load-stdlib ()
