@@ -21,13 +21,12 @@
          (error "destructure: unsupported ptree: ~a" ptree))))
 
 (defun evaluate (f e k)
+  "Evaluate form in environment, then call k with the result."
   (cond ((symbol? f)
          (let ((x (environment-find e f)))
            (if x
                (funcall k (environment-get x f))
-               ;; TODO validate
-               (progn (format t "evaluate: unbound variable: ~a~%" f)
-                      (intern "nil")))))
+               (format t "evaluate: unbound variable: ~a~%" f))))
         ((consp f)
          (destructuring-bind (f . args) f
            (evaluate f e (lambda (f) (apply f args e k)))))
@@ -35,7 +34,8 @@
          (funcall k f))))
 
 (defun evaluate-many (fs e k)
-  "Evaluate FS in E in a loop and return last result."
+  "Evaluate each of forms in provided environment, then call k with
+last form's result."
   (labels ((helper (fs value)
              (if (consp fs)
                  (evaluate (car fs)
@@ -46,6 +46,7 @@
     (helper fs (intern "nil"))))
 
 (defun evaluate-map (fs e k)
+  "Map evaluate over forms, then call K with the resulting list."
   (labels ((helper (fs k)
              (if (consp fs)
                  (evaluate (car fs)
@@ -72,8 +73,7 @@
                    (environment-set! new-env ebind e))
                  (evaluate-many body new-env k)))))
         ((function? f)
-         (evaluate-map a
-                       e
-                       (lambda (a) (apply (unwrap f) a e k))))
+         (evaluate-map a e (lambda (a)
+                             (apply (unwrap f) a e k))))
         (t
          (error "capply: can't apply ~a" f))))
