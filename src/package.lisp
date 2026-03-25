@@ -62,8 +62,8 @@
 
    ;; Interpreter
    :destructure
-   :eval ; TODO evaluate?
-   :eval-many
+   :evaluate
+   :evaluate-many
    :apply
 
    :load

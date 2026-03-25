@@ -26,9 +26,10 @@
 (define "evaluate"
   (wrap (special args env
           (destructuring-bind (form &optional (env env)) args
-            (eval form env)))))
+            (evaluate form env)))))
 
-(setf (special-metadata (unwrap (eval (intern "evaluate") *stdenv*)))
+(setf (special-metadata (unwrap (evaluate (intern "evaluate")
+                                          *stdenv*)))
       (read-string "((name . evaluate))"))
 
 ;; (if 'test 'then 'else)
@@ -36,9 +37,9 @@
 (define "if"
   (special args env
     (destructuring-bind (test then else) args
-      (if (cbool->bool (eval test env))
-          (eval then env)
-          (eval else env)))))
+      (if (cbool->bool (evaluate test env))
+          (evaluate then env)
+          (evaluate else env)))))
 
 ;; (symbol name)
 ;; Create a symbol that is not interned.
@@ -118,8 +119,8 @@
                    :environment env
                    :metadata (special-extract-metadata body)))))
 
-(setf (special-metadata (eval (intern "special")
-                              *stdenv*))
+(setf (special-metadata (evaluate (intern "special")
+                                  *stdenv*))
       (read-string "((name . special)
                      (pure . true))"))
 
@@ -135,7 +136,8 @@
   (function args
     (wrap (car args))))
 
-(setf (special-metadata (unwrap (eval (intern "wrap") *stdenv*)))
+(setf (special-metadata (unwrap (evaluate (intern "wrap")
+                                          *stdenv*)))
       (read-string "((name . wrap) (pure . true))"))
 
 ;; (number? object)

@@ -20,21 +20,21 @@
         (t
          (error "destructure: unsupported ptree: ~a" ptree))))
 
-(defun eval (form env)
+(defun evaluate (form env)
   (cond ((symbol? form)
          (let ((x (environment-find env form)))
            (if x
                (environment-get x form)
-               (error "eval: unbound variable: '~a'" form))))
+               (error "evaluate: unbound variable: '~a'" form))))
         ((consp form)
          (destructuring-bind (f . args) form
-           (apply (eval f env) args env)))
+           (apply (evaluate f env) args env)))
         (t form)))
 
-(defun eval-many (forms env)
+(defun evaluate-many (forms env)
   "Evaluate FORMS in ENV in a loop and return last result."
   (loop for form in forms
-        for result = (eval form env)
+        for result = (evaluate form env)
         finally (return result)))
 
 (defun apply (form args env)
@@ -49,10 +49,10 @@
                                 (environment-set! new-env k v)))
                  (unless (eq ebind (intern "nil"))
                    (environment-set! new-env ebind env))
-                 (eval-many body new-env)))))
+                 (evaluate-many body new-env)))))
         ((function? form)
          (apply (unwrap form)
-                (mapcar (lambda (form) (eval form env)) args)
+                (mapcar (lambda (form) (evaluate form env)) args)
                 env))
         (t
          (error "capply: can't apply ~a" form))))
