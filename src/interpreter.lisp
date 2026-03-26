@@ -26,38 +26,52 @@
          (let ((x (environment-find e f)))
            (if x
                (funcall k (environment-get x f))
-               (format t "evaluate: unbound variable: ~a~%" f))))
+               (progn (format t "evaluate: unbound variable: ~a~%" f)
+                      (intern "nil")))))
         ((consp f)
          (destructuring-bind (f . args) f
            (evaluate f e (lambda (f) (apply f args e k)))))
         (t
          (funcall k f))))
 
-(defun evaluate-many (fs e k)
+(defun fold (f value list)
+  (if (consp list)
+      (fold f
+            (funcall f value (car list))
+            (cdr list))
+    value))
+
+(defun fold-right (f value list)
+  (if (consp list)
+      (funcall f
+               (fold-right f
+                           value
+                           (cdr list))
+               (car list))
+      value))
+
+(defun evaluate-many (forms environment k)
   "Evaluate each of forms in provided environment, then call k with
 last form's result."
-  (labels ((helper (fs value)
-             (if (consp fs)
-                 (evaluate (car fs)
-                           e
-                           (lambda (value)
-                             (helper (cdr fs) value)))
-                 (funcall k value))))
-    (helper fs (intern "nil"))))
+  (funcall (fold-right (lambda (k f)
+                         (lambda (_)
+                           (declare (ignore _))
+                           (evaluate f environment k)))
+                       k
+                       forms)
+           (intern "nil")))
 
-(defun evaluate-map (fs e k)
+(defun evaluate-map (forms environment k)
   "Map evaluate over forms, then call K with the resulting list."
-  (labels ((helper (fs k)
-             (if (consp fs)
-                 (evaluate (car fs)
-                           e
-                           (lambda (value)
-                             (helper (cdr fs)
-                                     (lambda (x)
-                                       (funcall k
-                                                (cons value x))))))
-                 (funcall k nil))))
-    (helper fs k)))
+  (funcall (fold (lambda (k form)
+                   (lambda (values)
+                     (evaluate form
+                               environment
+                               (lambda (value)
+                                 (funcall k (cons value values))))))
+                 k
+                 forms)
+           nil))
 
 (defun apply (f a e k)
   (cond ((special? f)
