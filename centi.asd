@@ -7,6 +7,7 @@
   :depends-on (#:uiop)
   :components ((:module "src"
                 :components ((:file "package")
+                             (:file "helpers")
                              (:module "datatypes"
                               :components ((:file "symbol")
                                            (:file "environment")

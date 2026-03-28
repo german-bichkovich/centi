@@ -1,39 +1,12 @@
 (in-package :centi)
 
-;;; Utils ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun bool->cbool (x)
-  "Convert CL boolean to Centi boolean."
-  (if x (intern "true") (intern "false")))
-
-(defun cbool->bool (x)
-  "Convert Centi boolean to CL boolean."
-  (not (member x (list (intern "false")
-                       (intern "nil")))))
-
-(defmacro define (name thing)
-  `(progn (environment-set! *stdenv* (intern ,name) ,thing)
-          nil))
-
-(defun array? (object)
-  (and (arrayp object)
-       (eq t (array-element-type object))))
-
-(defun positive-integer? (object)
-  (and (integerp object)
-       (<= 0 object)))
-
-(defun byte? (object)
-  (and (integerp object)
-       (<= 0 object 255)))
-
 (defparameter *stdenv* (environment)
   "Standard environment that includes all builtins.")
 
 (defun init ()
   (load "@/lisp/bootstrap" *stdenv* #'identity))
 
-;;; Bootstrap ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Core ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (if 'test 'then 'else)
 ;; If test is true, evaluate then form, otherwise evaluate else form.
@@ -80,14 +53,33 @@
             (t
              (error "evaluate: invalid arity"))))))
 
-;; (symbol name)
-;; Create a symbol that is not interned.
-(define "symbol"
+;; (== . objects)
+;; Check of each of the objects are same object.
+(define "=="
   (function args
-    (assert (= (length args) 1)  "symbol: invalid arity")
-    (let ((name (car args)))
-      (assert (stringp name) "symbol: name is not a string")
-      (funcall k (symbol name)))))
+    (funcall k
+             (bool->cbool (let ((first (car args)))
+                            (dolist (o args t)
+                              (or (eq first o) (return))))))))
+
+;; (exit code)
+;; Kill the interpreter and make it return the provided exit code.
+(define "exit"
+  (function args
+    (assert (= (length args) 1) "exit: invalid arity")
+    (let ((code (car args)))
+      (assert (byte? code) "exit: invalid code")
+      (funcall k (uiop:quit code)))))
+
+;; (load file-spec)
+(define "load"
+  (function args env
+    (assert (= (length args) 1) "load: invalid arity")
+    (let ((path (car args)))
+      (assert (stringp path) "invalid file specification")
+      (load path (environment env) k))))
+
+;;; Symbols ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (symbol? object)
 ;; Check if object is a symbol.
@@ -95,6 +87,15 @@
   (function args
     (assert (= (length args) 1) "symbol?: invalid arity")
     (funcall k (bool->cbool (symbol? (car args))))))
+
+;; (symbol name)
+;; Create a symbol that is not interned.
+(define "symbol"
+  (function args
+    (assert (= (length args) 1) "symbol: invalid arity")
+    (let ((name (car args)))
+      (assert (stringp name) "symbol: name is not a string")
+      (funcall k (symbol name)))))
 
 ;; (symbol:name symbol)
 ;; Return a string representing a symbol name.
@@ -114,6 +115,8 @@
     (let ((name (car args)))
       (assert (stringp name) "symbol:intern: name is not a string")
       (funcall k (intern name)))))
+
+;;; Pairs & lists ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (pair? object)
 ;; Check if object is a pair.
@@ -150,6 +153,8 @@
       (rplacd pair value)
       (funcall k pair))))
 
+;;; Callables ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; (function? object)
 ;; Check if object is a function.
 (define "function?"
@@ -164,6 +169,15 @@
     (assert (= (length args) 1) "special?: invalid arity")
     (funcall k (bool->cbool (special? (car args))))))
 
+;; (wrap special)
+;; Return a function with same body as provided special has.
+(define "wrap"
+  (function args
+    (assert (= (length args) 1) "wrap: invalid arity")
+    (let ((special (car args)))
+      (assert (special? special) "wrap: not a special")
+      (funcall k (wrap special)))))
+
 ;; (unwrap function)
 ;; Return a special form with same body as one function has.
 (define "unwrap"
@@ -173,14 +187,149 @@
       (assert (function? function) "unwrap: not a function")
       (funcall k (unwrap function)))))
 
-;; (wrap special)
-;; Return a function with same body as provided special has.
-(define "wrap"
+;;; Strings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (string? object)
+;; Check if object is a string.
+(define "string?"
   (function args
-    (assert (= (length args) 1) "wrap: invalid arity")
-    (let ((special (car args)))
-      (assert (special? special) "wrap: not a special")
-      (funcall k (wrap special)))))
+    (assert (= (length args) 1) "string?: invalid arity")
+    (funcall k (bool->cbool (stringp (car args))))))
+
+;; (string:length string)
+;; Get length of a string.
+(define "string:length"
+  (function args
+    (assert (= (length args) 1) "string:length: invalid arity")
+    (let ((string (car args)))
+      (assert (stringp string) "string:length: not a string")
+      (funcall k (length string)))))
+
+;; (string::new length default)
+;; A primitive constructor for a string.
+(define "string::new"
+  (function args
+    (assert (= (length args) 2) "string::new: invalid arity")
+    (destructuring-bind (length default) args
+      (assert (positive-integer? length)
+              "string::new: invalid length")
+      (assert (positive-integer? default)
+              "string::new: default is not a character")
+      (let ((default (code-char default)))
+        (funcall k
+                 (make-array length
+                             :initial-element default
+                             :element-type 'character))))))
+
+;; (string:get string index)
+;; (string:get string index default)
+;; Get element of an array at index.
+;; TODO get nth character vs get nth byte?
+(define "string:get"
+  (function args
+    (assert (<= 2 (length args) 3) "string:get: invalid arity")
+    (destructuring-bind
+        (string index &optional (default 0)) args
+      (assert (stringp string) "string:get: not a string")
+      (assert (positive-integer? index)
+              "string:get: index is invalid")
+      (assert (positive-integer? default)
+              "string:get: default is not a character")
+      (funcall k (if (< -1 index (length string))
+                     (char-code (aref string index))
+                     default)))))
+
+;; (string:set! string index value)
+;; Set element of an array at index.
+(define "string:set!"
+  (function args
+    (assert (= (length args) 3) "string:set!: invalid arity")
+    (destructuring-bind (string index value) args
+      (assert (stringp string) "string:set!: not a string")
+      (assert (positive-integer? index) "string:set!: invalid index")
+      (setf (aref string index) (code-char value))
+      (funcall k string))))
+
+;; (string:code string)
+;; Return the code encoded in first character of the string.
+(define "string:code"
+  (function args
+    (assert (= (length args) 1) "string:code: invalid arity")
+    (let ((string (car args)))
+      (assert (stringp string) "string:code: not a string")
+      (assert (= (length string) 1) "string:code: invalid format")
+      (funcall k (char-code (aref (car args) 0))))))
+
+;; (string:character code)
+;; Return a string of length 1 with first element being provided code.
+(define "string:character"
+  (function args
+    (assert (= (length args) 1) "string:character: invalid arity")
+    (let ((code (car args)))
+      (assert (positive-integer? code)
+              "string:character: invalid code")
+      (funcall k (format nil "~a" (code-char code))))))
+
+;;; Arrays ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (array? object)
+;; Check if object is an array.
+(define "array?"
+  (function args
+    (assert (= (length args) 1) "array?: invalid arity")
+    (funcall k (bool->cbool (array? (car args))))))
+
+;; (array:length array)
+;; Get length of an array.
+(define "array:length"
+  (function args
+    (assert (= (length args) 1) "array:length: invalid arity")
+    (let ((array (car args)))
+      (assert (array? array) "array:length: not an array")
+        (funcall k (length array)))))
+
+;; (array::new length default)
+;; Primitive constructor for a general array.
+(define "array::new"
+  (function args
+    (assert (= (length args) 2) "array::new: invalid arity")
+    (destructuring-bind (length default) args
+      (assert (integerp length) "array::new: length is not a number")
+      (assert (>= length 0) "array::new: length is not positive")
+      (funcall k
+               (make-array length
+                           :initial-element default
+                           :element-type t)))))
+
+;; (array:get array index)
+;; (array:get array index default)
+;; Get element of an array at index.
+(define "array:get"
+  (function args
+    (assert (<= 2 (length args) 3) "array:get: invalid arity")
+    (destructuring-bind
+        (array index &optional (default (intern "nil"))) args
+      (assert (array? array) "array:get: not an array")
+      (assert (positive-integer? index)
+              "array:get: index is not an integer")
+      (assert (>= index 0) "array:get: index is invalid")
+      (funcall k (if (< -1 index (length array))
+                     (aref array index)
+                     default)))))
+
+;; (array:set! array index value)
+;; Set element of an array at index.
+(define "array:set!"
+  (function args
+    (assert (= (length args) 3) "array:set!: invalid arity")
+    (destructuring-bind (array index value) args
+      (assert (array? array) "array:set!: not an array")
+      (assert (integerp index) "array:set!: index is not an integer")
+      (assert (>= index 0) "array:set!: index is not positive")
+      (setf (aref array index) value)
+      (funcall k array))))
+
+;;; Numbers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (number? object)
 ;; Check if object is a number.
@@ -236,8 +385,7 @@
     (assert (= (length args) 2) "<<: invalid arity")
     (destructuring-bind (number n) args
       (assert (integerp number) "<<: not a number")
-      (assert (integerp n) "<<: n is not a number")
-      (assert (> n 0) "<<: n is not a positive number")
+      (assert (positive-integer? n) "<<: n is not a positive number")
       (funcall k (ash number n)))))
 
 ;; (>> number n)
@@ -247,8 +395,7 @@
     (assert (= (length args) 2) ">>: invalid arity")
     (destructuring-bind (number n) args
       (assert (integerp number) ">>: not a number")
-      (assert (integerp n) ">>: n is not a number")
-      (assert (> n 0) ">>: n is not a positive number")
+      (assert (positive-integer? n) ">>: n is not a positive number")
       (funcall k (ash number (- n))))))
 
 ;; (bitwise-and . numbers)
@@ -265,7 +412,7 @@
     (assert (every #'integerp args) "bitwise-or: not a number")
     (funcall k (cl:apply #'logior args))))
 
-;; (bitwise-exclusive-or number)
+;; (bitwise-exclusive-or . numbers)
 ;; Return a bitwise XOR of all provided numbers.
 (define "bitwise-exclusive-or"
   (function args
@@ -282,142 +429,7 @@
       (assert (integerp number) "bitwise-not: not a number")
       (funcall k (cl:apply #'lognot args)))))
 
-;; (array? object)
-;; Check if object is an array.
-(define "array?"
-  (function args
-    (assert (= (length args) 1) "array?: invalid arity")
-    (funcall k (bool->cbool (array? (car args))))))
-
-;; (array:length array)
-;; Get length of an array.
-(define "array:length"
-  (function args
-    (assert (= (length args) 1) "array:length: invalid arity")
-    (let ((array (car args)))
-      (assert (array? array) "array:length: not an array")
-        (funcall k (length array)))))
-
-;; (array::new length default)
-;; Primitive constructor for a general array.
-(define "array::new"
-  (function args
-    (assert (= (length args) 2) "array::new: invalid arity")
-    (destructuring-bind (length default) args
-      (assert (integerp length) "array::new: length is not a number")
-      (assert (>= length 0) "array::new: length is not positive")
-      (funcall k
-               (make-array length
-                           :initial-element default
-                           :element-type t)))))
-
-;; (array:get array index)
-;; (array:get array index default)
-;; Get element of an array at index.
-(define "array:get"
-  (function args
-    (assert (<= 2 (length args) 3) "array:get: invalid arity")
-    (destructuring-bind
-        (array index &optional (default (intern "nil"))) args
-      (assert (array? array) "array:get: not an array")
-      (assert (integerp index) "array:get: index is not an integer")
-      (assert (>= index 0) "array:get: index is invalid")
-      (funcall k (if (< -1 index (length array))
-                     (aref array index)
-                     default)))))
-
-;; (array:set! array index value)
-;; Set element of an array at index.
-(define "array:set!"
-  (function args
-    (assert (= (length args) 3) "array:set!: invalid arity")
-    (destructuring-bind (array index value) args
-      (assert (array? array) "array:set!: not an array")
-      (assert (integerp index) "array:set!: index is not an integer")
-      (assert (>= index 0) "array:set!: index is not positive")
-      (setf (aref array index) value)
-      (funcall k array))))
-
-;; (string? object)
-;; Check if object is a string.
-(define "string?"
-  (function args
-    (assert (= (length args) 1) "string?: invalid arity")
-    (funcall k (bool->cbool (stringp (car args))))))
-
-;; (string:length string)
-;; Get length of a string.
-(define "string:length"
-  (function args
-    (assert (= (length args) 1) "string:length: invalid arity")
-    (let ((string (car args)))
-      (assert (stringp string) "string:length: not a string")
-      (funcall k (length string)))))
-
-;; (string::new length default)
-;; A primitive constructor for a string.
-(define "string::new"
-  (function args
-    (assert (= (length args) 2) "string::new: invalid arity")
-    (destructuring-bind (length default) args
-      (assert (positive-integer? length)
-              "string::new: invalid length")
-      (assert (positive-integer? default)
-              "string::new: default is not a character")
-      (let ((default (code-char default)))
-        (funcall k
-                 (make-array length
-                             :initial-element default
-                             :element-type 'character))))))
-
-;; (string:get array index)
-;; (string:get array index default)
-;; Get element of an array at index.
-;; TODO get nth character vs get nth byte?
-(define "string:get"
-  (function args
-    (assert (<= 2 (length args) 3) "string:get: invalid arity")
-    (destructuring-bind
-        (string index &optional (default 0)) args
-      (assert (stringp string) "string:get: not a string")
-      (assert (positive-integer? index)
-              "string:get: index is invalid")
-      (assert (positive-integer? default)
-              "string:get: default is not a character")
-      (funcall k (if (< -1 index (length string))
-                     (char-code (aref string index))
-                     default)))))
-
-;; (string:set! string index value)
-;; Set element of an array at index.
-(define "string:set!"
-  (function args
-    (assert (= (length args) 3) "string:set!: invalid arity")
-    (destructuring-bind (string index value) args
-      (assert (stringp string) "string:set!: not a string")
-      (assert (positive-integer? index) "string:set!: invalid index")
-      (setf (aref string index) (code-char value))
-      (funcall k string))))
-
-;; (string:code string)
-;; Return the code encoded in first character of the string.
-(define "string:code"
-  (function args
-    (assert (= (length args) 1) "string:code: invalid arity")
-    (let ((string (car args)))
-      (assert (stringp string) "string:code: not a string")
-      (assert (= (length string) 1) "string:code: invalid format")
-      (funcall k (char-code (aref (car args) 0))))))
-
-;; (string:character code)
-;; Return a string of length 1 with first element being provided code.
-(define "string:character"
-  (function args
-    (assert (= (length args) 1) "string:character: invalid arity")
-    (let ((code (car args)))
-      (assert (positive-integer? code)
-              "string:character: invalid code")
-      (funcall k (format nil "~a" (code-char code))))))
+;;; Records ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (record? object)
 ;; Check if object is a record.
@@ -473,6 +485,8 @@
       (assert (positive-integer? index) "record:set!: invalid index")
       (funcall k (record-set! record index value)))))
 
+;;; Environments ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; (environment? object)
 ;; Create a new environment with specified parent environment.
 (define "environment?"
@@ -509,6 +523,8 @@
       (funcall k
                (environment-set! environment symbol value)))))
 
+;;; IO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; (write-byte byte)
 ;; Write a byte to standard output.
 (define "write-byte"
@@ -535,32 +551,6 @@
   (function args
     (assert (= (length args) 1) ":print: invalid arity")
     (funcall k (print (car args)))))
-
-;; (== . objects)
-;; Check of each of the objects are same object.
-(define "=="
-  (function args
-    (funcall k
-             (bool->cbool (let ((first (car args)))
-                            (dolist (o args t)
-                              (or (eq first o) (return))))))))
-
-;; (exit code)
-;; Kill the interpreter and make it return the provided exit code.
-(define "exit"
-  (function args
-    (assert (= (length args) 1) "exit: invalid arity")
-    (let ((code (car args)))
-      (assert (byte? code) "exit: invalid code")
-      (funcall k (uiop:quit code)))))
-
-;; (load file-spec)
-(define "load"
-  (function args env
-    (assert (= (length args) 1) "load: invalid arity")
-    (let ((path (car args)))
-      (assert (stringp path) "invalid file specification")
-      (load path (environment env) k))))
 
 ;;; Questionable ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
