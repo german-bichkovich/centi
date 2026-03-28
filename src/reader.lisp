@@ -48,7 +48,7 @@
                              (next)
                              (return string))
                             ((null c)
-                             (error "read: unterminated string"))
+                             (cl:error "read: unterminated string"))
                             (t
                              (vector-push-extend (if (eq c #\\)
                                                      (read-escape)
@@ -63,7 +63,7 @@
                    do (if (delimiter? c)
                           (return
                             (handler-case (parse-integer name)
-                              (error () (intern name))))
+                              (cl:error () (intern name))))
                           (vector-push-extend (if (eq c #\\)
                                                   (read-escape)
                                                   (next))
@@ -82,7 +82,7 @@
                                    (skip-whitespace depth)
                                    (if (eq (next) delimiter)
                                        (return (cdr result))
-                                       (error
+                                       (cl:error
                                         "read-list: malformed pair")))
                                   (t
                                    (setf (cdr current) (cons thing nil)
@@ -100,10 +100,10 @@
              (skip-whitespace depth)
              (case (peek)
                ((#\) #\} #\])
-                (error "read: unexpected '~a'" (next)))
+                (cl:error "read: unexpected '~a'" (next)))
                ((nil) (if (= depth 0)
                           eof-marker
-                          (error "read: unexpected EOF")))
+                          (cl:error "read: unexpected EOF")))
                (#\(   (read-list depth))
                (#\[   (read-vector-form depth))
                (#\{   (read-hashmap-form depth))

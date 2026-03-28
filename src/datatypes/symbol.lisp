@@ -1,7 +1,7 @@
 (in-package :centi)
 
 (defstruct (symbol (:copier nil)
-                   (:predicate symbol?)
+                   (:predicate %symbol?)
                    (:constructor symbol (%name)))
   %name)
 
@@ -9,6 +9,10 @@
   (if symbol
       (symbol-%name symbol)
       "()"))
+
+(defun symbol? (object)
+  (or (%symbol? object)
+      (not object)))
 
 (defmethod print-object ((object symbol) stream)
   (loop for c across (symbol-name object) do

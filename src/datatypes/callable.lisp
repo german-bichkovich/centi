@@ -64,14 +64,15 @@ that forces evaluation of its arguments."
 ;;; Convinience constructors ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro special (ptree ebind &rest body)
+  (declare (ignorable ptree ebind))
   `(special-new
     :ebind ,(if (consp ebind) ebind `',ebind)
     :ptree 'args
     :environment 'nil
     :body (lambda (args env k)
             (declare (ignorable args env k))
-            ,@body)))
+            (block nil
+              ,@body))))
 
 (defmacro function (parameter &rest body)
-  `(wrap (special ,parameter (centi:intern "nil")
-                  (funcall k (progn . ,body)))))
+  `(wrap (special ,parameter (centi:intern "nil") . ,body)))

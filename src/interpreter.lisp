@@ -1,5 +1,6 @@
 (in-package :centi)
 
+;; TODO cps
 (defun destructure (ptree form callback)
   "Destructure FORM over PTREE. Whenever ptree is a symbol, do
 (callback symbol form)."
@@ -19,20 +20,6 @@
                 (error "destructure: not a pair: ~a" form))))
         (t
          (error "destructure: unsupported ptree: ~a" ptree))))
-
-(defun evaluate (f e k)
-  "Evaluate form in environment, then call k with the result."
-  (cond ((symbol? f)
-         (let ((x (environment-find e f)))
-           (if x
-               (funcall k (environment-get x f))
-               (progn (format t "evaluate: unbound variable: ~a~%" f)
-                      (intern "nil")))))
-        ((consp f)
-         (destructuring-bind (f . args) f
-           (evaluate f e (lambda (f) (apply f args e k)))))
-        (t
-         (funcall k f))))
 
 (defun fold (f value list)
   (if (consp list)
@@ -73,6 +60,19 @@ last form's result."
                  forms)
            nil))
 
+(defun evaluate (f e k)
+  "Evaluate form in environment, then call k with the result."
+  (cond ((symbol? f)
+         (let ((x (environment-find e f)))
+           (if x
+               (funcall k (environment-get x f))
+               (error "evaluate: unbound variable: ~a~%" f))))
+        ((consp f)
+         (destructuring-bind (f . args) f
+           (evaluate f e (lambda (f) (apply f args e k)))))
+        (t
+         (funcall k f))))
+
 (defun apply (f a e k)
   (cond ((special? f)
          (with-slots (ptree body environment ebind) f
@@ -91,3 +91,13 @@ last form's result."
                              (apply (unwrap f) a e k))))
         (t
          (error "capply: can't apply ~a" f))))
+
+;; TODO move elsewhere
+(defun error (&rest args)
+  (cl:apply #'format t args)
+  (intern "nil"))
+
+(defmacro assert (test &rest format-args)
+  `(if ,test
+       (intern "nil")
+       (return (centi::error . ,format-args))))

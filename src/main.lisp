@@ -19,15 +19,14 @@
             (t
              (error "resolve-filepath: bad string ~a" p))))))
 
-(defun load (path &optional in-stdenv?)
+(defun load (path env k)
   (with-open-file (s (resolve-filepath path))
-    (loop with env = (if in-stdenv?
-                         *stdenv*
-                         (environment *stdenv*))
-          for form = (read :stream s)
-          until (member form (list 'EOF (intern "nil")))
-          for value = (evaluate form env #'identity) ; TODO break
-          finally (return value))))
+    (labels ((helper (value)
+               (let ((form (read :stream s)))
+                 (if (member form (list 'EOF (intern "nil")))
+                     (funcall k value)
+                     (evaluate form env #'helper)))))
+      (helper (intern "nil")))))
 
 (defun repl ()
   (loop
@@ -37,15 +36,14 @@
     do (evaluate (list (intern "print") form) environment #'identity)
        (terpri)))
 
-(defun load-stdlib ()
-  (load "@/lisp/bootstrap" t))
-
 (defun main ()
   (destructuring-bind (&optional file-path)
       uiop:*command-line-arguments*
-    (load-stdlib)
+    (init)
     (if file-path
         (if (uiop:file-exists-p file-path)
-            (load file-path)
-            (error "centi: file doesn't exist ~a" file-path))
+            (load file-path (environment *stdenv*) #'identity)
+            (format uiop:*stderr*
+                    "centi: file '~a' doesn't exist"
+                    file-path))
         (repl))))

@@ -11,7 +11,9 @@
    :print
    :eval
    :load
-   :apply)
+   :apply
+   :error
+   :assert)
   (:export
 
    ;; Symbols
@@ -52,7 +54,7 @@
    :record-type
    :record-nth
    :record-set!
-   
+
    ;; Reader
    :read
    :read-string
@@ -66,5 +68,7 @@
    :evaluate-many
    :apply
 
+   :error
+   :assert
    :load
    :main))

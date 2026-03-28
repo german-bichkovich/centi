@@ -375,6 +375,9 @@ applies to the first word of heap space:
 
 * TODOs
 
+- bidirectional type checker
+- replace every cl:error with cps
+- make every parameter optional, defaulting to nil?
 - look into algebraic effects
 - IO system
 - subtyping?
@@ -397,6 +400,19 @@ applies to the first word of heap space:
 - find a good hash function
 - implement a profiler
 - Make compiler do type inference to reduce type checks at runtime
+
+#+begin_src scheme
+  (define-syntax letcc
+    (syntax-rules ()
+      ((letcc () expression)
+       expression)
+      ((letcc ((name (f xs ...))
+               (names inits) ...)
+              expression)
+       (f xs ... (lambda (name)
+                   (letcc ((names inits) ...)
+                          expression))))))
+#+end_src
 
 #+begin_src elisp
   (progn

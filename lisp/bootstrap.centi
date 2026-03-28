@@ -1341,3 +1341,9 @@ imports each of them with provided prefix.")
               (write "\n\n")))
           nil)
          (true nil))))
+
+(:define define-function
+  (special (name . body) env
+    (let ((f (evaluate (pair function body) env)))
+      (environment:set! name f)
+      f)))
