@@ -6,17 +6,19 @@
 (defun whitespace? (c)
   (member c '(#\newline #\space #\tab)))
 
+(defun make-buffer ()
+  (make-array 0 :fill-pointer 0
+                :adjustable t
+                :element-type 'character))
+
 ;; TODO read macros with #func ...
 ;; #read-hex a8b9
 ;; #read-octal 361100
 ;; #read-binary 1010101010
-(defun read (&key (stream *standard-input*)
-                  (eof-marker 'EOF))
-  (labels ((make-buffer ()
-             (make-array 0 :fill-pointer 0
-                           :adjustable t
-                           :element-type 'character))
-           (next () (read-char stream nil))
+(defun read (&key
+               (stream *standard-input*)
+               (eof-marker 'EOF))
+  (labels ((next () (read-char stream nil))
            (peek () (peek-char nil stream nil))
            (read-escape ()
              (next)  ; #\\
