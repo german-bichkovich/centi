@@ -1,3 +1,8 @@
+(in-package :centi)
+
+(defparameter *stdenv* nil
+  "Standard environment that includes all builtins.")
+
 (defun bool->cbool (x)
   "Convert CL boolean to Centi boolean."
   (if x (intern "true") (intern "false")))
@@ -19,20 +24,21 @@
   (and (integerp object)
        (<= 0 object 255)))
 
-(defmacro define (name thing)
-  `(progn (environment-set! *stdenv* (intern ,name) ,thing)
-          nil))
+(defun define (name thing)
+  (environment-set! *stdenv* (intern name) thing))
 
-(defmacro special (ptree ebind &rest body)
-  (declare (ignorable ptree ebind))
-  `(special-new
-    :ebind ,(if (consp ebind) ebind `',ebind)
-    :ptree 'args
-    :environment 'nil
-    :body (lambda (args env k)
-            (declare (ignorable args env k))
-            (block nil
-              ,@body))))
+(defun fold (f value list)
+  (if (consp list)
+      (fold f
+            (funcall f value (car list))
+            (cdr list))
+    value))
 
-(defmacro function (parameter &rest body)
-  `(wrap (special ,parameter (centi:intern "nil") . ,body)))
+(defun fold-right (f value list)
+  (if (consp list)
+      (funcall f
+               (fold-right f
+                           value
+                           (cdr list))
+               (car list))
+      value))

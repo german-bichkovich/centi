@@ -1347,3 +1347,6 @@ imports each of them with provided prefix.")
     (let ((f (evaluate (pair function body) env)))
       (environment:set! name f)
       f)))
+
+# (reset (function ()
+#          (+ 1 (shift (function (k) (k 5))))))

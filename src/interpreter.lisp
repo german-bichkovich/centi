@@ -21,22 +21,6 @@
         (t
          (error "destructure: unsupported ptree: ~a" ptree))))
 
-(defun fold (f value list)
-  (if (consp list)
-      (fold f
-            (funcall f value (car list))
-            (cdr list))
-    value))
-
-(defun fold-right (f value list)
-  (if (consp list)
-      (funcall f
-               (fold-right f
-                           value
-                           (cdr list))
-               (car list))
-      value))
-
 (defun evaluate-many (forms environment k)
   "Evaluate each of forms in provided environment, then call k with
 last form's result."
@@ -74,18 +58,18 @@ last form's result."
          (funcall k f))))
 
 (defun apply (f a e k)
-  (cond ((special? f)
+  (cond ((functionp f) ; NOTE same as special, for convinience
+         (funcall f a e k))
+        ((special? f)
          (with-slots (ptree body environment ebind) f
-           (if (functionp body)
-               (funcall body a e k)
-               (let ((new-env (environment environment)))
-                 (destructure ptree
-                              a
-                              (lambda (k v)
-                                (environment-set! new-env k v)))
-                 (unless (eq ebind (intern "nil"))
-                   (environment-set! new-env ebind e))
-                 (evaluate-many body new-env k)))))
+           (let ((new-env (environment environment)))
+             (destructure ptree
+                          a
+                          (lambda (k v)
+                            (environment-set! new-env k v)))
+             (unless (eq ebind (intern "nil"))
+               (environment-set! new-env ebind e))
+             (evaluate-many body new-env k))))
         ((function? f)
          (evaluate-map a e (lambda (a)
                              (apply (unwrap f) a e k))))
