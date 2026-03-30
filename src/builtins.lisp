@@ -79,6 +79,33 @@
       (assert (stringp path) "invalid file specification")
       (load path (environment env) k))))
 
+;; NOTE not tail recursive yet
+;; TODO something something algebraic effects
+;; (reset (lambda () body...))
+(define "reset"
+  (function args
+    (assert (= (length args) 1) "reset: invalid arity")
+    (let ((f (car args)))
+      (assert (function? f) "reset: not a function")
+      (k (apply f () env #'identity)))))
+
+;; (shift (lambda (k) body...))
+(define "shift"
+  (function args
+    (assert (= (length args) 1) "shift: invalid arity")
+    (let ((f (car args)))
+      (assert (function? f) "shift: not a function")
+      (apply f
+             (list
+              (wrap
+               (special-new :body (lambda (args env k0)
+                                    (assert (= (length args) 1)
+                                            "invalid arity")
+                                    (declare (ignore env))
+                                    (funcall k0 (k (car args)))))))
+              env
+              #'identity))))
+
 ;;; Symbols ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (symbol? object)
